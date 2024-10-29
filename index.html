@@ -1,38 +1,171 @@
-﻿<!doctype html>
+﻿<!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>World's Top 10 Tallest Buildings Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Map container -->
+    <div id="map"></div>
 
-    <title>唐穿记</title>
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <link rel="stylesheet" href="style.css">
-
-</head>
-
-<body>
-
-    <div class="outerContainer">
-        <h3 class="written-in-ink"><a href="https://www.inklestudios.com/ink">WRITTEN IN INK</a></h3>
-
-        <div id="controls" class="buttons">
-          <a id="rewind" title="Restart story from beginning">restart</a>
-          <a id="save" title="Save progress">save</a>
-          <a id="reload" title="Reload from save point">load</a>
-          <a id="theme-switch" title="Switch theme">theme</a>
-        </div>
-
-        <div id="story" class="container">
-            <div class="header">
-                <h1>唐穿记</h1>
-                <h2 class="byline"></h2>
-            </div>
-        </div>
+    <!-- Video container -->
+    <div id="video-container">
+      <button id="close-video">Close</button>
+      <iframe
+        id="video-iframe"
+        width="100%"
+        height="100%"
+        frameborder="0"
+        allowfullscreen
+      ></iframe>
     </div>
 
-    <script src="ink.js"></script>
-    <script src="唐穿.js"></script>
-    <script src="main.js"></script>
-</body>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Custom JS -->
+    <script>
+      // Initialize the map
+      var map = L.map("map").setView([20, 0], 2);
+
+      // Add the tile layer with labels in English
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        {
+          attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+          subdomains: "abcd",
+          maxZoom: 19,
+        }
+      ).addTo(map);
+
+      // Building data
+      var buildings = [
+        {
+          name: "Burj Khalifa",
+          coords: [25.197197, 55.274376],
+          video: "https://www.youtube.com/embed/IJY1M0B0qYk",
+          ranking: 1,
+          height: 2717,
+        },
+        {
+          name: "Merdeka 118",
+          coords: [3.139003, 101.697273],
+          video: "https://www.youtube.com/embed/VgAA3R2eqBk",
+          ranking: 2,
+          height: 2227,
+        },
+        {
+          name: "Shanghai Tower",
+          coords: [31.233568, 121.505504],
+          video: "https://www.youtube.com/embed/xW7fWkFJvZQ",
+          ranking: 3,
+          height: 2073,
+        },
+        {
+          name: "Abraj Al-Bait Clock Tower",
+          coords: [21.418773, 39.825653],
+          video: "https://www.youtube.com/embed/3CIs0s9oRkg",
+          ranking: 4,
+          height: 1971,
+        },
+        {
+          name: "Ping An Finance Center",
+          coords: [22.533219, 114.055023],
+          video: "https://www.youtube.com/embed/xi1fq7kFczM",
+          ranking: 5,
+          height: 1965,
+        },
+        {
+          name: "Lotte World Tower",
+          coords: [37.513068, 127.102558],
+          video: "https://www.youtube.com/embed/V0hj9eKp8-U",
+          ranking: 6,
+          height: 1819,
+        },
+        {
+          name: "One World Trade Center",
+          coords: [40.712742, -74.013382],
+          video: "https://www.youtube.com/watch?v=Cy_so02KBA0",
+          ranking: 7,
+          height: 1776,
+        },
+        {
+          name: "Guangzhou CTF Finance Centre",
+          coords: [23.118731, 113.322613],
+          video: "https://www.youtube.com/embed/n9yh8_qn5lQ",
+          ranking: 8,
+          height: 1739,
+        },
+        {
+          name: "Tianjin CTF Finance Centre",
+          coords: [39.084564, 117.206093],
+          video: "https://www.youtube.com/embed/g7ngS7jbrwY",
+          ranking: 9,
+          height: 1739,
+        },
+        {
+          name: "CITIC Tower (China Zun)",
+          coords: [39.913818, 116.396975],
+          video: "https://www.youtube.com/embed/yK1XYkz_U6s",
+          ranking: 10,
+          height: 1731,
+        },
+      ];
+
+      // Add markers to the map
+      buildings.forEach(function (building) {
+        var marker = L.marker(building.coords).addTo(map);
+
+        // Create tooltip content
+        var tooltipContent =
+          "<strong>" +
+          building.name +
+          "</strong><br>" +
+          "Rank: " +
+          building.ranking +
+          "<br>" +
+          "Height: " +
+          building.height +
+          " ft";
+
+        // Bind tooltip to show building info on hover
+        marker.bindTooltip(tooltipContent, {
+          permanent: false,
+          direction: "top",
+          opacity: 0.8,
+        });
+
+        marker.on("mouseover", function (e) {
+          this.openTooltip();
+        });
+
+        marker.on("mouseout", function (e) {
+          this.closeTooltip();
+        });
+
+        // On marker click, display the YouTube video
+        marker.on("click", function (e) {
+          $("#video-container").show();
+          $("#video-iframe").attr("src", building.video);
+          $("html, body").animate(
+            {
+              scrollTop: $("#video-container").offset().top,
+            },
+            1000
+          );
+        });
+      });
+
+      // Close video when the 'Close' button is clicked
+      $("#close-video").click(function () {
+        $("#video-container").hide();
+        $("#video-iframe").attr("src", "");
+      });
+    </script>
+  </body>
 </html>
