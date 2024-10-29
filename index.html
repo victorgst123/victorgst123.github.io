@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -6,30 +6,90 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>World's Top 10 Tallest Buildings Map</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="style.css" />
+    <style>
+      /* Map container style */
+      #map {
+        height: 100vh;
+        width: 100%;
+      }
+
+      #video-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.9);
+        display: none; /* Hidden by default */
+        z-index: 1000;
+      }
+
+      #video-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+
+      #video-iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      #close-video {
+        position: absolute;
+        top: 20px;
+        right: 40px;
+        color: #fff;
+        font-size: 40px;
+        font-weight: bold;
+        cursor: pointer;
+        z-index: 1001;
+      }
+    </style>
   </head>
   <body>
     <!-- Map container -->
     <div id="map"></div>
 
-    <!-- Video container -->
-    <div id="video-container">
-      <button id="close-video">Close</button>
-      <iframe
-        id="video-iframe"
-        width="100%"
-        height="100%"
-        frameborder="0"
-        allowfullscreen
-      ></iframe>
+    <!-- Video overlay -->
+    <div id="video-overlay">
+      <div id="video-container">
+        <span id="close-video" onclick="closeVideo()">×</span>
+        <iframe
+          id="video-iframe"
+          src=""
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen
+        ></iframe>
+      </div>
     </div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- jQuery (optional, not needed anymore) -->
+    <!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
     <!-- Custom JS -->
     <script>
+      function openVideo(url) {
+        const overlay = document.getElementById("video-overlay");
+        const iframe = document.getElementById("video-iframe");
+
+        iframe.src = url; // Set the YouTube video URL
+        overlay.style.display = "block"; // Show the overlay
+      }
+
+      function closeVideo() {
+        const overlay = document.getElementById("video-overlay");
+        const iframe = document.getElementById("video-iframe");
+
+        iframe.src = ""; // Clear the video URL
+        overlay.style.display = "none"; // Hide the overlay
+      }
+
       // Initialize the map
       var map = L.map("map").setView([20, 0], 2);
 
@@ -48,70 +108,71 @@
         {
           name: "Burj Khalifa",
           coords: [25.197197, 55.274376],
-          video: "https://www.youtube.com/embed/IJY1M0B0qYk",
+          video: "https://www.youtube.com/watch?v=JR0BTwq3JAg",
           ranking: 1,
           height: 2717,
         },
         {
           name: "Merdeka 118",
           coords: [3.139003, 101.697273],
-          video: "https://www.youtube.com/embed/VgAA3R2eqBk",
+          video: "https://www.youtube.com/watch?v=diJYtPqeF1I",
           ranking: 2,
           height: 2227,
         },
         {
           name: "Shanghai Tower",
           coords: [31.233568, 121.505504],
-          video: "https://www.youtube.com/embed/xW7fWkFJvZQ",
+          video: "https://www.youtube.com/watch?v=D6jFKpvxjyU",
           ranking: 3,
           height: 2073,
         },
         {
           name: "Abraj Al-Bait Clock Tower",
           coords: [21.418773, 39.825653],
-          video: "https://www.youtube.com/embed/3CIs0s9oRkg",
+          video: "https://www.youtube.com/watch?v=1OGrI-KQxUs",
           ranking: 4,
           height: 1971,
         },
         {
           name: "Ping An Finance Center",
           coords: [22.533219, 114.055023],
-          video: "https://www.youtube.com/embed/xi1fq7kFczM",
+          video: "https://www.youtube.com/watch?v=b8MZ1BLANrU",
           ranking: 5,
           height: 1965,
         },
         {
           name: "Lotte World Tower",
           coords: [37.513068, 127.102558],
-          video: "https://www.youtube.com/embed/V0hj9eKp8-U",
+          video: "https://www.youtube.com/watch?v=Q03HBJipjP0",
           ranking: 6,
           height: 1819,
         },
         {
           name: "One World Trade Center",
           coords: [40.712742, -74.013382],
-          video: "https://www.youtube.com/watch?v=Cy_so02KBA0",
+          video:
+            "https://www.youtube.com/embed/Cy_so02KBA0?si=K8c2mpbJMk2iCSdb",
           ranking: 7,
           height: 1776,
         },
         {
           name: "Guangzhou CTF Finance Centre",
           coords: [23.118731, 113.322613],
-          video: "https://www.youtube.com/embed/n9yh8_qn5lQ",
+          video: "https://www.youtube.com/watch?v=GYhg7sS7oSU",
           ranking: 8,
           height: 1739,
         },
         {
           name: "Tianjin CTF Finance Centre",
           coords: [39.084564, 117.206093],
-          video: "https://www.youtube.com/embed/g7ngS7jbrwY",
+          video: "https://www.youtube.com/watch?v=5mKc65jZSP4",
           ranking: 9,
           height: 1739,
         },
         {
           name: "CITIC Tower (China Zun)",
           coords: [39.913818, 116.396975],
-          video: "https://www.youtube.com/embed/yK1XYkz_U6s",
+          video: "https://www.youtube.com/watch?v=vBBcJcXQCcw",
           ranking: 10,
           height: 1731,
         },
@@ -148,23 +209,10 @@
           this.closeTooltip();
         });
 
-        // On marker click, display the YouTube video
+        // On marker click, open the YouTube video in a new tab
         marker.on("click", function (e) {
-          $("#video-container").show();
-          $("#video-iframe").attr("src", building.video);
-          $("html, body").animate(
-            {
-              scrollTop: $("#video-container").offset().top,
-            },
-            1000
-          );
+          openVideo(building.video);
         });
-      });
-
-      // Close video when the 'Close' button is clicked
-      $("#close-video").click(function () {
-        $("#video-container").hide();
-        $("#video-iframe").attr("src", "");
       });
     </script>
   </body>
