@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power of 10 Name</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px;
+            font-size: 1rem;
+        }
+        #output {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>Power of 10 Name</h1>
+    <p>Enter a non-negative integer (0-1000):</p>
+    <input type="number" id="numberInput" min="0" max="251" placeholder="Enter X">
+    <button onclick="showName()">Get Name</button>
+    <div id="output"></div>
+
+    <script>
+        function generateLargeScaleNames() {
+            const smallNames = ["", "ten", "hundred", "thousand"];
+            const bigUnits = [
+                "", "million", "billion", "trillion", "quadrillion", "quintillion",
+                "sextillion", "septillion", "octillion", "nonillion", "decillion",
+                "undecillion", "duodecillion", "tredecillion", "quattuordecillion",
+                "quindecillion", "sexdecillion", "septendecillion", "octodecillion",
+                "novemdecillion", "vigintillion", "unvigintillion", "duovigintillion",
+                "trevigintillion", "quattuorvigintillion", "quinvigintillion",
+                "sexvigintillion", "septenvigintillion", "octovigintillion",
+                "novemvigintillion", "trigintillion", "untrigintillion",
+                "duotrigintillion", "tretrigintillion", "quattuortrigintillion",
+                "quintrigintillion", "sextrigintillion", "septentrigintillion",
+                "octotrigintillion", "novemtrigintillion", "quadragintillion",
+                "quinquadragintillion", "sexquadragintillion", "septenquadragintillion",
+                "octoquadragintillion", "novemquadragintillion", "quinquagintillion",
+                "sexquinquagintillion", "septenquinquagintillion", "octoquinquagintillion",
+                "novemquinquagintillion", "sexagintillion", "septuagintillion",
+                "octogintillion", "nonagintillion", "centillion", "uncentillion",
+                "duocentillion", "trescentillion", "quattuorcentillion",
+                "quincentillion", "sexcentillion", "septencentillion",
+                "octocentillion", "novemcentillion", "decicentillion", "undecicentillion",
+                "viginticentillion", "trigintacentillion", "quadragintacentillion",
+                "quinquagintacentillion", "sexagintacentillion", "septuagintacentillion",
+                "octogintacentillion", "nonagintacentillion", "ducentillion",
+                "trecentillion", "quadringentillion", "quingentillion",
+                "sescentillion", "septingentillion", "octingentillion",
+                "nongentillion", "millinillion"
+            ];
+
+            const names = [];
+            for (let i = 0; i <= 1000; i++) {
+                if (i === 0) {
+                    names.push("one");
+                } else if (i < 4) {
+                    names.push(smallNames[i]);
+                } else {
+                    const thousands = Math.floor(i / 3);
+                    const remainder = i % 3;
+                    const name = `${smallNames[remainder]} ${bigUnits[thousands]}`.trim();
+                    names.push(name);
+                }
+            }
+            return names;
+        }
+
+        const names = generateLargeScaleNames();
+
+        function showName() {
+            const input = document.getElementById("numberInput").value;
+            const x = parseInt(input);
+
+            if (isNaN(x) || x < 0 || x > 251) {
+                document.getElementById("output").innerText = "Please enter a valid non-negative integer between 0 and 1000.";
+                return;
+            }
+
+            const name = names[x] || `10^${x} is beyond our naming system.`;
+            document.getElementById("output").innerText = `10^${x} is called "${name}".`;
+        }
+    </script>
+</body>
+</html>
