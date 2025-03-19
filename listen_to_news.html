@@ -47,10 +47,14 @@
         let isSpeaking = false;
 
         document.getElementById("playPauseBtn").addEventListener("click", function() {
-            alert("🔹 按钮点击 - 开始朗读");
             if (isFirstPlay) {
                 isFirstPlay = false;
-                speechSynthesis.cancel(); // **清除之前的朗读，避免 Safari 无声音**
+
+                // **确保 Safari 允许朗读**
+                let blankSpeech = new SpeechSynthesisUtterance("");
+                speechSynthesis.speak(blankSpeech);
+
+                speechSynthesis.cancel();
                 loadAndPlayNextRSS();
                 this.textContent = "⏸ 暂停";
             } else {
@@ -59,11 +63,8 @@
         });
 
         async function loadAndPlayNextRSS() {
-            alert("🔹 加载 RSS 订阅源...");
             for (let i = 0; i < rssFeeds.length; i++) {
                 let rssUrl = rssFeeds[i];
-                console.log(`加载 RSS: ${rssUrl}`);
-                
                 let newsItems = await fetchRSS(rssUrl);
                 
                 if (newsQueue.length === 0 && newsItems.length > 0) {
@@ -76,7 +77,6 @@
         }
 
         async function fetchRSS(url) {
-            alert(`🔹 请求 RSS 数据: ${url}`);
             try {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
@@ -92,30 +92,27 @@
 
                     description = cleanNewsText(description);
 
-                    if (description.length < 20) continue; // ✅ **跳过长度小于 20 的新闻**
+                    if (description.length < 20) continue;
 
                     if (!playedNews.includes(title)) {
                         fetchedNews.push({ title, description });
                     }
                 }
-                alert(`🔹 RSS 加载成功，共获取 ${fetchedNews.length} 条新闻`);
                 return fetchedNews;
             } catch (error) {
-                alert(`❌ RSS 加载失败: ${url}`);
                 console.error(`RSS 加载失败: ${url}`, error);
                 return [];
             }
         }
 
         function cleanNewsText(text) {
-            text = text.replace(/^.*?（[^）]+）/, "").trim(); // ✅ **去掉“（记者XXX）”及之前的所有内容**
-            text = text.replace(/^.*?电 /, "").trim(); // ✅ **去掉类似“中新网3月19日电”**
+            text = text.replace(/^.*?（[^）]+）/, "").trim();
+            text = text.replace(/^.*?电 /, "").trim();
             return text;
         }
 
         function readCurrentNews() {
             if (newsQueue.length === 0) {
-                alert("🔹 所有新闻播放完毕");
                 console.log("所有新闻播放完毕");
                 return;
             }
@@ -125,31 +122,36 @@
             document.getElementById("newsContent").textContent = news.description;
 
             savePlayedNews(news.title);
-            alert(`🔹 朗读新闻: ${news.title}`);
             speakText(news.title, news.description);
         }
 
         function speakText(title, content) {
-            speechSynthesis.cancel(); // **清除之前的朗读**
-            alert("🔹 调用 speechSynthesis.speak()");
+            speechSynthesis.cancel();
 
-            let utterTitle = new SpeechSynthesisUtterance("新闻标题：" + title);
+            let utterTitle = new SpeechSynthesisUtterance(title);
             utterTitle.lang = "zh-CN";
             utterTitle.rate = 1.0;
 
-            let utterContent = new SpeechSynthesisUtterance("新闻内容：" + content);
+            let utterContent = new SpeechSynthesisUtterance(content);
             utterContent.lang = "zh-CN";
             utterContent.rate = 1.0;
 
+            // **✅ 尝试手动选择 iOS 设备上的可用中文语音**
+            let voices = speechSynthesis.getVoices();
+            let chineseVoice = voices.find(voice => voice.lang.startsWith("zh"));
+
+            if (chineseVoice) {
+                utterTitle.voice = chineseVoice;
+                utterContent.voice = chineseVoice;
+            }
+
             utterTitle.onend = () => {
-                alert("🔹 标题朗读完成，准备朗读正文...");
                 if (!isPaused) {
                     speechSynthesis.speak(utterContent);
                 }
             };
 
             utterContent.onend = () => {
-                alert("🔹 正文朗读完成，播放下一条新闻...");
                 if (!isPaused) {
                     readCurrentNews();
                 }
@@ -161,8 +163,7 @@
         }
 
         function toggleSpeech() {
-            if (!isSpeaking) return; // **确保当前有播放内容**
-            alert("🔹 切换暂停/恢复");
+            if (!isSpeaking) return;
 
             if (isPaused) {
                 speechSynthesis.resume();
