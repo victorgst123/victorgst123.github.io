@@ -27,6 +27,7 @@
     </div>
 
     <script>
+        // 全局变量
         const voiceSelect = document.getElementById("voiceSelect");
         const playPauseBtn = document.getElementById("playPauseBtn");
         const newsTitle = document.getElementById("newsTitle");
@@ -34,12 +35,15 @@
         let selectedVoiceName = "";
         let voicesLastLength = 0;
         let voicesStableTimer;
+        let isPaused = false;
+        let isFirstPlay = true;
+        let isSpeaking = false;
+        let currentUtterTitle = null, currentUtterContent = null;
 
+        // 加载语音，等待 voices 稳定后再初始化 UI
         function loadVoices() {
             const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith("zh"));
             if (voices.length === 0) return;
-
-            // 如果列表长度变化，重置稳定计时
             if (voices.length !== voicesLastLength) {
                 voicesLastLength = voices.length;
                 clearTimeout(voicesStableTimer);
@@ -64,18 +68,24 @@
 
         playPauseBtn.addEventListener("click", () => {
             if (playPauseBtn.disabled) return;
-            playPauseBtn.textContent = "⏸ 暂停";
-            loadAndPlayNextRSS();
+            if (isFirstPlay) {
+                isFirstPlay = false;
+                speechSynthesis.cancel();
+                loadAndPlayNextRSS();
+                playPauseBtn.textContent = "⏸ 暂停";
+            } else {
+                toggleSpeech();
+            }
         });
 
-        // —— 以下保持不变 —— //
-
+        // 新闻数据相关
         const rssFeeds = [
             "https://www.chinanews.com.cn/rss/importnews.xml",
             "https://www.chinanews.com.cn/rss/china.xml",
             "https://www.chinanews.com.cn/rss/world.xml"
         ];
-        let newsQueue = [], playedNews = JSON.parse(localStorage.getItem("playedNews"))||[], isPaused=false, isFirstPlay=true;
+        let newsQueue = [];
+        let playedNews = JSON.parse(localStorage.getItem("playedNews")) || [];
 
         async function loadAndPlayNextRSS() {
             for (const url of rssFeeds) {
@@ -88,15 +98,22 @@
         async function fetchRSS(url) {
             try {
                 const resp = await fetch(url);
-                const xml = new DOMParser().parseFromString(await resp.text(),"text/xml");
+                const xml = new DOMParser().parseFromString(await resp.text(), "text/xml");
                 return Array.from(xml.querySelectorAll("item"))
-                    .map(item => ({ title:item.querySelector("title")?.textContent||"", description: cleanNewsText(item.querySelector("description")?.textContent||"") }))
-                    .filter(n=>n.title && n.description.length>20 && !playedNews.includes(n.title));
-            } catch { return []; }
+                    .map(item => ({
+                        title: item.querySelector("title")?.textContent.trim() || "",
+                        description: cleanNewsText(item.querySelector("description")?.textContent || "")
+                    }))
+                    .filter(n => n.title && n.description.length > 20 && !playedNews.includes(n.title));
+            } catch (error) {
+                console.error("RSS 加载失败:", url, error);
+                return [];
+            }
         }
 
+        // 正则：匹配从开头到第一个“电”及后面括号（可选）的内容
         function cleanNewsText(text) {
-            return text.replace(/^.*?（[^）]+）/, "").replace(/^.*?电 /, "").trim();
+            return text.replace(/^.*?电(?:\([^)]*\))?/, "").trim();
         }
 
         function getSelectedVoice() {
@@ -104,29 +121,63 @@
         }
 
         function readCurrentNews() {
-            if (!newsQueue.length) return;
-            const {title,description} = newsQueue.shift();
+            if (!newsQueue.length) {
+                console.log("所有新闻播放完毕");
+                return;
+            }
+            const { title, description } = newsQueue.shift();
             newsTitle.textContent = title;
             document.getElementById("newsContent").textContent = description;
             savePlayedNews(title);
             speakText(title, description);
         }
 
+        // 播放文字，保存当前 utterance 引用以便暂停时修改回调
         function speakText(title, content) {
             speechSynthesis.cancel();
             const voice = getSelectedVoice();
-            const t1 = new SpeechSynthesisUtterance(title);
-            const t2 = new SpeechSynthesisUtterance(content);
-            if (voice) t1.voice = t2.voice = voice;
-            t1.lang = t2.lang = "zh-CN"; t1.rate = t2.rate = 1;
-            t1.onend = ()=>!isPaused && speechSynthesis.speak(t2);
-            t2.onend = ()=>!isPaused && readCurrentNews();
-            speechSynthesis.speak(t1);
+            currentUtterTitle = new SpeechSynthesisUtterance(title);
+            currentUtterContent = new SpeechSynthesisUtterance(content);
+            if (voice) {
+                currentUtterTitle.voice = currentUtterContent.voice = voice;
+            }
+            currentUtterTitle.lang = currentUtterContent.lang = "zh-CN";
+            currentUtterTitle.rate = currentUtterContent.rate = 1.0;
+            currentUtterTitle.onend = () => {
+                if (!isPaused) {
+                    speechSynthesis.speak(currentUtterContent);
+                }
+            };
+            currentUtterContent.onend = () => {
+                if (!isPaused) {
+                    readCurrentNews();
+                }
+            };
+            isSpeaking = true;
+            speechSynthesis.speak(currentUtterTitle);
+        }
+
+        // 暂停/恢复逻辑：暂停时取消当前 utterance onend 回调，避免触发下一条新闻
+        function toggleSpeech() {
+            if (!isSpeaking) return;
+            if (isPaused) {
+                speechSynthesis.resume();
+                playPauseBtn.textContent = "⏸ 暂停";
+            } else {
+                // 暂停前先清空当前 utterance 的 onend 回调
+                if (currentUtterTitle) currentUtterTitle.onend = function() {};
+                if (currentUtterContent) currentUtterContent.onend = function() {};
+                speechSynthesis.pause();
+                playPauseBtn.textContent = "▶ 恢复";
+            }
+            isPaused = !isPaused;
         }
 
         function savePlayedNews(title) {
             playedNews.push(title);
-            if (playedNews.length>100) playedNews.shift();
+            if (playedNews.length > 100) {
+                playedNews.shift();
+            }
             localStorage.setItem("playedNews", JSON.stringify(playedNews));
         }
     </script>
