@@ -44,11 +44,13 @@
         const MAX_STORAGE_SIZE = 100;
         let isPaused = false;
         let isFirstPlay = true;
-        let utterTitle, utterContent; // **确保标题和内容的 `speechUtterance` 在外部可控**
+        let utterTitle, utterContent;
+        let isSpeaking = false;
 
         document.getElementById("playPauseBtn").addEventListener("click", function() {
             if (isFirstPlay) {
                 isFirstPlay = false;
+                speechSynthesis.cancel(); // **清除之前的朗读，避免 Safari 无声音**
                 loadAndPlayNextRSS();
                 this.textContent = "⏸ 暂停";
             } else {
@@ -134,11 +136,11 @@
                 speechSynthesis.cancel(); // **清除正在朗读的内容**
             }
 
-            utterTitle = new SpeechSynthesisUtterance(title);
+            utterTitle = new SpeechSynthesisUtterance("新闻标题：" + title);
             utterTitle.lang = "zh-CN";
             utterTitle.rate = 1.0;
 
-            utterContent = new SpeechSynthesisUtterance(content);
+            utterContent = new SpeechSynthesisUtterance("新闻内容：" + content);
             utterContent.lang = "zh-CN";
             utterContent.rate = 1.0;
 
@@ -154,17 +156,33 @@
                 }
             };
 
-            speechSynthesis.resume();
-            speechSynthesis.speak(utterTitle);
-            isPaused = false;
+            isSpeaking = true;
+
+            // **针对 iOS 和 PC 兼容性优化**
+            if (window.safari !== undefined) {
+                speechSynthesis.cancel(); // **iOS 端需要取消之前的朗读**
+                setTimeout(() => {
+                    speechSynthesis.speak(utterTitle);
+                }, 100); // **确保 iOS Safari 正常播放**
+            } else {
+                speechSynthesis.speak(utterTitle);
+            }
+
             document.getElementById("playPauseBtn").textContent = "⏸ 暂停";
         }
 
         function toggleSpeech() {
-            if (!utterTitle || !utterContent) return; // **确保当前有播放内容**
+            if (!isSpeaking) return; // **确保当前有播放内容**
 
             if (isPaused) {
-                speechSynthesis.resume();
+                if (window.safari !== undefined) {
+                    speechSynthesis.cancel(); // **iOS Safari 需要重新播放**
+                    setTimeout(() => {
+                        speechSynthesis.speak(utterTitle);
+                    }, 100);
+                } else {
+                    speechSynthesis.resume();
+                }
                 document.getElementById("playPauseBtn").textContent = "⏸ 暂停";
             } else {
                 speechSynthesis.pause();
