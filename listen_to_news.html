@@ -70,6 +70,8 @@
         let selectedVoiceName = "";
         let voicesLastLength = 0;
         let voicesStableTimer;
+        let isPlaying = false;
+        let isPaused = false;
 
         // 只筛选中文语音，并在语音列表稳定后进行初始化
         function loadVoices() {
@@ -93,6 +95,9 @@
             newsTitle.textContent = "加载完成";
         }
 
+        // 初始加载尝试
+        loadVoices();
+        // 监听语音列表变化事件
         speechSynthesis.onvoiceschanged = loadVoices;
 
         voiceSelect.addEventListener("change", () => {
@@ -110,20 +115,25 @@
 
         // 点击按钮时，自动在「开始朗读」「暂停」「继续播放」三种状态间切换
         playPauseBtn.addEventListener("click", () => {
-            // 如果当前是「暂停状态」，点击后 resume()
-            if (speechSynthesis.paused) {
+            // 如果当前是暂停状态，点击后继续播放
+            if (isPaused) {
                 speechSynthesis.resume();
+                isPaused = false;
+                isPlaying = true;
                 playPauseBtn.textContent = "⏸ 暂停";
             }
-            // 如果当前正在「播放」，点击后 pause()
-            else if (speechSynthesis.speaking) {
+            // 如果当前正在播放，点击后暂停
+            else if (isPlaying) {
                 speechSynthesis.pause();
+                isPaused = true;
                 playPauseBtn.textContent = "▶ 继续播放";
             }
             // 否则说明尚未播放或已经播放完，点击后重新开始
             else {
                 // 每次重新开始时清空当前可能残留的播放，并加载新闻
                 speechSynthesis.cancel();
+                isPlaying = true;
+                isPaused = false;
                 playPauseBtn.textContent = "⏸ 暂停";
                 loadAndPlayNextRSS();
             }
@@ -160,7 +170,7 @@
         }
 
         // 根据经验修改的清理规则：
-        // 1) 去掉从开头到第一个“电”（包含“电”）这部分
+        // 1) 去掉从开头到第一个"电"（包含"电"）这部分
         // 2) 去掉开头的各种括号（可含中文/英文括号）
         // 3) 最后 trim()
         function cleanNewsText(text) {
@@ -181,6 +191,9 @@
                 newsTitle.textContent = "新闻播放完毕";
                 newsContent.textContent = "";
                 speechSynthesis.cancel();
+                isPlaying = false;
+                isPaused = false;
+                playPauseBtn.textContent = "▶ 开始朗读";
                 return;
             }
 
@@ -212,13 +225,15 @@
 
             // 播报完标题后再播报正文
             t1.onend = () => {
-                if (!speechSynthesis.paused) {
+                // 只有在非暂停状态下才继续播放正文
+                if (!isPaused) {
                     speechSynthesis.speak(t2);
                 }
             };
             // 播报完正文后，自动读下一条新闻
             t2.onend = () => {
-                if (!speechSynthesis.paused) {
+                // 只有在非暂停状态下才继续播放下一条
+                if (!isPaused) {
                     readCurrentNews();
                 }
             };
