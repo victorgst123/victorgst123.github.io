@@ -44,7 +44,6 @@
         const MAX_STORAGE_SIZE = 100;
         let isPaused = false;
         let isFirstPlay = true;
-        let utterTitle, utterContent;
         let isSpeaking = false;
 
         document.getElementById("playPauseBtn").addEventListener("click", function() {
@@ -132,15 +131,13 @@
         }
 
         function speakText(title, content) {
-            if (utterTitle || utterContent) {
-                speechSynthesis.cancel(); // **清除正在朗读的内容**
-            }
+            speechSynthesis.cancel(); // **清除之前的朗读**
 
-            utterTitle = new SpeechSynthesisUtterance("新闻标题：" + title);
+            let utterTitle = new SpeechSynthesisUtterance("新闻标题：" + title);
             utterTitle.lang = "zh-CN";
             utterTitle.rate = 1.0;
 
-            utterContent = new SpeechSynthesisUtterance("新闻内容：" + content);
+            let utterContent = new SpeechSynthesisUtterance("新闻内容：" + content);
             utterContent.lang = "zh-CN";
             utterContent.rate = 1.0;
 
@@ -157,17 +154,7 @@
             };
 
             isSpeaking = true;
-
-            // **针对 iOS 和 PC 兼容性优化**
-            if (window.safari !== undefined) {
-                speechSynthesis.cancel(); // **iOS 端需要取消之前的朗读**
-                setTimeout(() => {
-                    speechSynthesis.speak(utterTitle);
-                }, 100); // **确保 iOS Safari 正常播放**
-            } else {
-                speechSynthesis.speak(utterTitle);
-            }
-
+            speechSynthesis.speak(utterTitle);
             document.getElementById("playPauseBtn").textContent = "⏸ 暂停";
         }
 
@@ -175,14 +162,7 @@
             if (!isSpeaking) return; // **确保当前有播放内容**
 
             if (isPaused) {
-                if (window.safari !== undefined) {
-                    speechSynthesis.cancel(); // **iOS Safari 需要重新播放**
-                    setTimeout(() => {
-                        speechSynthesis.speak(utterTitle);
-                    }, 100);
-                } else {
-                    speechSynthesis.resume();
-                }
+                speechSynthesis.resume();
                 document.getElementById("playPauseBtn").textContent = "⏸ 暂停";
             } else {
                 speechSynthesis.pause();
