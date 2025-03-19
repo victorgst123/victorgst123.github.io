@@ -5,15 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 语音新闻阅读器</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f4; margin: 0; padding: 20px; }
-        h1 { font-size: 22px; margin-bottom: 10px; }
-        .controls { display: flex; justify-content: center; margin-top: 20px; gap: 10px; }
-        button, select { padding: 10px 20px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; }
-        button { background: #28a745; color: white; }
-        button:disabled { background: #ccc; cursor: default; }
-        button:hover:not(:disabled) { background: #218838; }
-        .news-title { font-size: 20px; font-weight: bold; margin-top: 20px; }
-        .news-content { font-size: 16px; margin: 10px 20px; }
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        button, select {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button {
+            background: #28a745;
+            color: white;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: default;
+        }
+        button:hover:not(:disabled) {
+            background: #218838;
+        }
+        .news-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .news-content {
+            font-size: 16px;
+            margin: 10px 20px;
+        }
     </style>
 </head>
 <body>
@@ -27,23 +62,21 @@
     </div>
 
     <script>
-        // 全局变量
         const voiceSelect = document.getElementById("voiceSelect");
         const playPauseBtn = document.getElementById("playPauseBtn");
         const newsTitle = document.getElementById("newsTitle");
+        const newsContent = document.getElementById("newsContent");
 
         let selectedVoiceName = "";
         let voicesLastLength = 0;
         let voicesStableTimer;
-        let isPaused = false;
-        let isFirstPlay = true;
-        let isSpeaking = false;
-        let currentUtterTitle = null, currentUtterContent = null;
 
-        // 加载语音，等待 voices 稳定后再初始化 UI
         function loadVoices() {
+            // 只筛选出中文语音
             const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith("zh"));
             if (voices.length === 0) return;
+
+            // 如果列表长度变化，重置稳定计时器
             if (voices.length !== voicesLastLength) {
                 voicesLastLength = voices.length;
                 clearTimeout(voicesStableTimer);
@@ -66,28 +99,43 @@
             selectedVoiceName = voiceSelect.value;
         });
 
-        playPauseBtn.addEventListener("click", () => {
-            if (playPauseBtn.disabled) return;
-            if (isFirstPlay) {
-                isFirstPlay = false;
-                speechSynthesis.cancel();
-                loadAndPlayNextRSS();
-                playPauseBtn.textContent = "⏸ 暂停";
-            } else {
-                toggleSpeech();
-            }
-        });
-
-        // 新闻数据相关
+        // 新闻队列和播放控制
         const rssFeeds = [
             "https://www.chinanews.com.cn/rss/importnews.xml",
             "https://www.chinanews.com.cn/rss/china.xml",
             "https://www.chinanews.com.cn/rss/world.xml"
         ];
-        let newsQueue = [];
-        let playedNews = JSON.parse(localStorage.getItem("playedNews")) || [];
+        let newsQueue = [],
+            playedNews = JSON.parse(localStorage.getItem("playedNews")) || [],
+            isPaused = false;
 
+        // 点击按钮时，切换开始/暂停/继续播放
+        playPauseBtn.addEventListener("click", () => {
+            if (playPauseBtn.disabled) return;
+
+            // 如果当前没有在说话，也没有处于暂停状态，说明是首次“开始”
+            if (!speechSynthesis.speaking && !isPaused) {
+                isPaused = false;
+                playPauseBtn.textContent = "⏸ 暂停";
+                loadAndPlayNextRSS();
+            }
+            // 如果已经处于暂停状态，则点击后继续播放
+            else if (speechSynthesis.paused) {
+                speechSynthesis.resume();
+                isPaused = false;
+                playPauseBtn.textContent = "⏸ 暂停";
+            }
+            // 否则就是正在播放中，点击后暂停
+            else {
+                speechSynthesis.pause();
+                isPaused = true;
+                playPauseBtn.textContent = "▶ 继续播放";
+            }
+        });
+
+        // 从 RSS 链接中按顺序抓取新闻并播放
         async function loadAndPlayNextRSS() {
+            // 依次抓取所有 RSS
             for (const url of rssFeeds) {
                 const items = await fetchRSS(url);
                 newsQueue.push(...items);
@@ -95,84 +143,87 @@
             readCurrentNews();
         }
 
+        // 抓取指定 RSS 并返回新闻列表
         async function fetchRSS(url) {
             try {
                 const resp = await fetch(url);
                 const xml = new DOMParser().parseFromString(await resp.text(), "text/xml");
                 return Array.from(xml.querySelectorAll("item"))
                     .map(item => ({
-                        title: item.querySelector("title")?.textContent.trim() || "",
+                        title: item.querySelector("title")?.textContent || "",
                         description: cleanNewsText(item.querySelector("description")?.textContent || "")
                     }))
-                    .filter(n => n.title && n.description.length > 20 && !playedNews.includes(n.title));
-            } catch (error) {
-                console.error("RSS 加载失败:", url, error);
+                    .filter(n =>
+                        n.title &&
+                        n.description.length > 20 &&
+                        !playedNews.includes(n.title)
+                    );
+            } catch {
                 return [];
             }
         }
 
-        // 正则：匹配从开头到第一个“电”及后面括号（可选）的内容
+        // 清理新闻文本，去掉多余开头部分
         function cleanNewsText(text) {
-            return text.replace(/^.*?电(?:\([^)]*\))?/, "").trim();
+            return text
+                // 去掉从开头到“电”以及随后括号的部分（如果有）
+                .replace(/^.*?电\(.*?\)\s*/, "")
+                .replace(/^.*?电\s*/, "")
+                // 去掉开头“（……）”这类括号内容
+                .replace(/^.*?（[^）]*）\s*/, "")
+                .trim();
         }
 
-        function getSelectedVoice() {
-            return speechSynthesis.getVoices().find(v => v.name === selectedVoiceName);
-        }
-
+        // 播放当前队列里的第一条新闻
         function readCurrentNews() {
-            if (!newsQueue.length) {
-                console.log("所有新闻播放完毕");
-                return;
-            }
+            if (!newsQueue.length) return;
+
             const { title, description } = newsQueue.shift();
             newsTitle.textContent = title;
-            document.getElementById("newsContent").textContent = description;
+            newsContent.textContent = description;
             savePlayedNews(title);
+
             speakText(title, description);
         }
 
-        // 播放文字，保存当前 utterance 引用以便暂停时修改回调
         function speakText(title, content) {
+            // 先取消之前的播报
             speechSynthesis.cancel();
-            const voice = getSelectedVoice();
-            currentUtterTitle = new SpeechSynthesisUtterance(title);
-            currentUtterContent = new SpeechSynthesisUtterance(content);
+
+            // 找到用户当前选定的语音
+            const voice = speechSynthesis.getVoices().find(v => v.name === selectedVoiceName);
+
+            // 分两段播报：标题 + 正文
+            const t1 = new SpeechSynthesisUtterance(title);
+            const t2 = new SpeechSynthesisUtterance(content);
             if (voice) {
-                currentUtterTitle.voice = currentUtterContent.voice = voice;
+                t1.voice = voice;
+                t2.voice = voice;
             }
-            currentUtterTitle.lang = currentUtterContent.lang = "zh-CN";
-            currentUtterTitle.rate = currentUtterContent.rate = 1.0;
-            currentUtterTitle.onend = () => {
+            t1.lang = "zh-CN";
+            t2.lang = "zh-CN";
+            t1.rate = 1;
+            t2.rate = 1;
+
+            // 标题播报结束后，再播报正文
+            t1.onend = () => {
                 if (!isPaused) {
-                    speechSynthesis.speak(currentUtterContent);
+                    speechSynthesis.speak(t2);
                 }
             };
-            currentUtterContent.onend = () => {
+
+            // 正文播报结束后，自动进入下一条
+            t2.onend = () => {
                 if (!isPaused) {
                     readCurrentNews();
                 }
             };
-            isSpeaking = true;
-            speechSynthesis.speak(currentUtterTitle);
+
+            // 开始播报标题
+            speechSynthesis.speak(t1);
         }
 
-        // 暂停/恢复逻辑：暂停时取消当前 utterance onend 回调，避免触发下一条新闻
-        function toggleSpeech() {
-            if (!isSpeaking) return;
-            if (isPaused) {
-                speechSynthesis.resume();
-                playPauseBtn.textContent = "⏸ 暂停";
-            } else {
-                // 暂停前先清空当前 utterance 的 onend 回调
-                if (currentUtterTitle) currentUtterTitle.onend = function() {};
-                if (currentUtterContent) currentUtterContent.onend = function() {};
-                speechSynthesis.pause();
-                playPauseBtn.textContent = "▶ 恢复";
-            }
-            isPaused = !isPaused;
-        }
-
+        // 记录已播报的新闻标题，避免重复
         function savePlayedNews(title) {
             playedNews.push(title);
             if (playedNews.length > 100) {
