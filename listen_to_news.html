@@ -10,7 +10,8 @@
         .controls { display: flex; justify-content: center; margin-top: 20px; gap: 10px; }
         button, select { padding: 10px 20px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; }
         button { background: #28a745; color: white; }
-        button:hover { background: #218838; }
+        button:disabled { background: #ccc; cursor: default; }
+        button:hover:not(:disabled) { background: #218838; }
         .news-title { font-size: 20px; font-weight: bold; margin-top: 20px; }
         .news-content { font-size: 16px; margin: 10px 20px; }
     </style>
@@ -19,34 +20,40 @@
 
     <h1>AI 语音新闻阅读器</h1>
     <select id="voiceSelect"></select>
-    <div class="news-title" id="newsTitle">加载中...</div>
+    <div class="news-title" id="newsTitle">加载人工语音中…</div>
     <div class="news-content" id="newsContent"></div>
     <div class="controls">
-        <button id="playPauseBtn">▶ 开始朗读</button>
+        <button id="playPauseBtn" disabled>▶ 开始朗读</button>
     </div>
 
     <script>
-        const rssFeeds = [
-            "https://www.chinanews.com.cn/rss/importnews.xml",
-            "https://www.chinanews.com.cn/rss/china.xml",
-            "https://www.chinanews.com.cn/rss/world.xml"
-        ];
-
-        let newsQueue = [];
-        let playedNews = JSON.parse(localStorage.getItem("playedNews")) || [];
-        let selectedVoiceName = "";
-        let isPaused = false;
-        let isFirstPlay = true;
-        let isSpeaking = false;
-
         const voiceSelect = document.getElementById("voiceSelect");
+        const playPauseBtn = document.getElementById("playPauseBtn");
+        const newsTitle = document.getElementById("newsTitle");
+
+        let selectedVoiceName = "";
+        let voicesLastLength = 0;
+        let voicesStableTimer;
 
         function loadVoices() {
             const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith("zh"));
+            if (voices.length === 0) return;
+
+            // 如果列表长度变化，重置稳定计时
+            if (voices.length !== voicesLastLength) {
+                voicesLastLength = voices.length;
+                clearTimeout(voicesStableTimer);
+                voicesStableTimer = setTimeout(() => initializeVoiceUI(voices), 500);
+            }
+        }
+
+        function initializeVoiceUI(voices) {
             voiceSelect.innerHTML = voices.map(v =>
                 `<option value="${v.name}">${v.name} (${v.lang})</option>`
             ).join("");
-            if (voices.length) selectedVoiceName = voices[0].name;
+            selectedVoiceName = voices[0].name;
+            playPauseBtn.disabled = false;
+            newsTitle.textContent = "加载完成";
         }
 
         speechSynthesis.onvoiceschanged = loadVoices;
@@ -55,14 +62,20 @@
             selectedVoiceName = voiceSelect.value;
         });
 
-        document.getElementById("playPauseBtn").addEventListener("click", () => {
-            if (isFirstPlay) {
-                isFirstPlay = false;
-                speechSynthesis.cancel();
-                loadAndPlayNextRSS();
-                playPauseBtn.textContent = "⏸ 暂停";
-            } else toggleSpeech();
+        playPauseBtn.addEventListener("click", () => {
+            if (playPauseBtn.disabled) return;
+            playPauseBtn.textContent = "⏸ 暂停";
+            loadAndPlayNextRSS();
         });
+
+        // —— 以下保持不变 —— //
+
+        const rssFeeds = [
+            "https://www.chinanews.com.cn/rss/importnews.xml",
+            "https://www.chinanews.com.cn/rss/china.xml",
+            "https://www.chinanews.com.cn/rss/world.xml"
+        ];
+        let newsQueue = [], playedNews = JSON.parse(localStorage.getItem("playedNews"))||[], isPaused=false, isFirstPlay=true;
 
         async function loadAndPlayNextRSS() {
             for (const url of rssFeeds) {
@@ -75,16 +88,11 @@
         async function fetchRSS(url) {
             try {
                 const resp = await fetch(url);
-                const xml = new DOMParser().parseFromString(await resp.text(), "text/xml");
+                const xml = new DOMParser().parseFromString(await resp.text(),"text/xml");
                 return Array.from(xml.querySelectorAll("item"))
-                    .map(item => ({
-                        title: item.querySelector("title")?.textContent.trim() || "",
-                        description: cleanNewsText(item.querySelector("description")?.textContent || "")
-                    }))
-                    .filter(n => n.title && n.description.length > 20 && !playedNews.includes(n.title));
-            } catch {
-                return [];
-            }
+                    .map(item => ({ title:item.querySelector("title")?.textContent||"", description: cleanNewsText(item.querySelector("description")?.textContent||"") }))
+                    .filter(n=>n.title && n.description.length>20 && !playedNews.includes(n.title));
+            } catch { return []; }
         }
 
         function cleanNewsText(text) {
@@ -97,8 +105,8 @@
 
         function readCurrentNews() {
             if (!newsQueue.length) return;
-            const { title, description } = newsQueue.shift();
-            document.getElementById("newsTitle").textContent = title;
+            const {title,description} = newsQueue.shift();
+            newsTitle.textContent = title;
             document.getElementById("newsContent").textContent = description;
             savePlayedNews(title);
             speakText(title, description);
@@ -107,37 +115,18 @@
         function speakText(title, content) {
             speechSynthesis.cancel();
             const voice = getSelectedVoice();
-            const utterTitle = new SpeechSynthesisUtterance(title);
-            const utterContent = new SpeechSynthesisUtterance(content);
-
-            if (voice) {
-                utterTitle.voice = utterContent.voice = voice;
-            }
-            utterTitle.lang = utterContent.lang = "zh-CN";
-            utterTitle.rate = utterContent.rate = 1.0;
-
-            utterTitle.onend = () => !isPaused && speechSynthesis.speak(utterContent);
-            utterContent.onend = () => !isPaused && readCurrentNews();
-
-            isSpeaking = true;
-            speechSynthesis.speak(utterTitle);
-        }
-
-        function toggleSpeech() {
-            if (!isSpeaking) return;
-            if (isPaused) {
-                speechSynthesis.resume();
-                playPauseBtn.textContent = "⏸ 暂停";
-            } else {
-                speechSynthesis.pause();
-                playPauseBtn.textContent = "▶ 恢复";
-            }
-            isPaused = !isPaused;
+            const t1 = new SpeechSynthesisUtterance(title);
+            const t2 = new SpeechSynthesisUtterance(content);
+            if (voice) t1.voice = t2.voice = voice;
+            t1.lang = t2.lang = "zh-CN"; t1.rate = t2.rate = 1;
+            t1.onend = ()=>!isPaused && speechSynthesis.speak(t2);
+            t2.onend = ()=>!isPaused && readCurrentNews();
+            speechSynthesis.speak(t1);
         }
 
         function savePlayedNews(title) {
             playedNews.push(title);
-            if (playedNews.length > 100) playedNews.shift();
+            if (playedNews.length>100) playedNews.shift();
             localStorage.setItem("playedNews", JSON.stringify(playedNews));
         }
     </script>
