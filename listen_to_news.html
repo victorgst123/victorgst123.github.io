@@ -18,19 +18,15 @@
 <body>
 
     <h1>AI 语音新闻阅读器</h1>
-    
-    <!-- 语音选择 Dropdown（只显示中文语音） -->
     <select id="voiceSelect"></select>
-
     <div class="news-title" id="newsTitle">加载中...</div>
     <div class="news-content" id="newsContent"></div>
-    
     <div class="controls">
         <button id="playPauseBtn">▶ 开始朗读</button>
     </div>
 
     <script>
-        let rssFeeds = [
+        const rssFeeds = [
             "https://www.chinanews.com.cn/rss/importnews.xml",
             "https://www.chinanews.com.cn/rss/china.xml",
             "https://www.chinanews.com.cn/rss/world.xml"
@@ -38,178 +34,112 @@
 
         let newsQueue = [];
         let playedNews = JSON.parse(localStorage.getItem("playedNews")) || [];
-        let selectedVoice = null;
-        const MAX_STORAGE_SIZE = 100;
+        let selectedVoiceName = "";
         let isPaused = false;
         let isFirstPlay = true;
         let isSpeaking = false;
 
         const voiceSelect = document.getElementById("voiceSelect");
 
-        // ✅ **填充可用中文语音**
         function loadVoices() {
-            let voices = speechSynthesis.getVoices();
-            voiceSelect.innerHTML = ""; // 清空下拉菜单
-
-            let chineseVoices = voices.filter(voice => voice.lang.startsWith("zh"));
-
-            // ✅ **仅显示 `中文` 语音**
-            chineseVoices.forEach((voice, index) => {
-                let option = document.createElement("option");
-                option.value = index;
-                option.textContent = `${voice.name} (${voice.lang})`;
-                voiceSelect.appendChild(option);
-            });
-
-            // ✅ **默认选择第一个中文语音**
-            if (chineseVoices.length > 0) {
-                voiceSelect.value = 0;
-                selectedVoice = chineseVoices[0];
-            }else{
-                selectedVoice =  voices.filter(voice => voice.name.includes("Lilian"));
-            }
+            const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith("zh"));
+            voiceSelect.innerHTML = voices.map(v =>
+                `<option value="${v.name}">${v.name} (${v.lang})</option>`
+            ).join("");
+            if (voices.length) selectedVoiceName = voices[0].name;
         }
 
-        // **确保 `speechSynthesis.getVoices()` 先加载语音**
         speechSynthesis.onvoiceschanged = loadVoices;
 
-        // ✅ **监听 `Dropdown` 变化，更新选中的语音**
         voiceSelect.addEventListener("change", () => {
-            let chineseVoices = speechSynthesis.getVoices().filter(voice => voice.lang.startsWith("zh"));
-            selectedVoice = chineseVoices[voiceSelect.value];
+            selectedVoiceName = voiceSelect.value;
         });
 
-        document.getElementById("playPauseBtn").addEventListener("click", function() {
+        document.getElementById("playPauseBtn").addEventListener("click", () => {
             if (isFirstPlay) {
                 isFirstPlay = false;
-
-                let blankSpeech = new SpeechSynthesisUtterance("");
-                speechSynthesis.speak(blankSpeech);
                 speechSynthesis.cancel();
-
                 loadAndPlayNextRSS();
-                this.textContent = "⏸ 暂停";
-            } else {
-                toggleSpeech();
-            }
+                playPauseBtn.textContent = "⏸ 暂停";
+            } else toggleSpeech();
         });
 
         async function loadAndPlayNextRSS() {
-            for (let i = 0; i < rssFeeds.length; i++) {
-                let rssUrl = rssFeeds[i];
-                let newsItems = await fetchRSS(rssUrl);
-                
-                if (newsQueue.length === 0 && newsItems.length > 0) {
-                    newsQueue.push(...newsItems);
-                    readCurrentNews();
-                } else {
-                    newsQueue.push(...newsItems);
-                }
+            for (const url of rssFeeds) {
+                const items = await fetchRSS(url);
+                newsQueue.push(...items);
             }
+            readCurrentNews();
         }
 
         async function fetchRSS(url) {
             try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                const data = await response.text();
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(data, "text/xml");
-                const items = xml.querySelectorAll("item");
-
-                let fetchedNews = [];
-                for (const item of items) {
-                    let title = item.querySelector("title")?.textContent || "无标题";
-                    let description = item.querySelector("description")?.textContent || "无摘要";
-
-                    description = cleanNewsText(description);
-                    if (description.length < 20) continue;
-
-                    if (!playedNews.includes(title)) {
-                        fetchedNews.push({ title, description });
-                    }
-                }
-                return fetchedNews;
-            } catch (error) {
-                console.error(`RSS 加载失败: ${url}`, error);
+                const resp = await fetch(url);
+                const xml = new DOMParser().parseFromString(await resp.text(), "text/xml");
+                return Array.from(xml.querySelectorAll("item"))
+                    .map(item => ({
+                        title: item.querySelector("title")?.textContent.trim() || "",
+                        description: cleanNewsText(item.querySelector("description")?.textContent || "")
+                    }))
+                    .filter(n => n.title && n.description.length > 20 && !playedNews.includes(n.title));
+            } catch {
                 return [];
             }
         }
 
         function cleanNewsText(text) {
-            text = text.replace(/^.*?（[^）]+）/, "").trim();
-            text = text.replace(/^.*?电 /, "").trim();
-            return text;
+            return text.replace(/^.*?（[^）]+）/, "").replace(/^.*?电 /, "").trim();
+        }
+
+        function getSelectedVoice() {
+            return speechSynthesis.getVoices().find(v => v.name === selectedVoiceName);
         }
 
         function readCurrentNews() {
-            if (newsQueue.length === 0) {
-                console.log("所有新闻播放完毕");
-                return;
-            }
-
-            const news = newsQueue.shift();
-            document.getElementById("newsTitle").textContent = news.title;
-            document.getElementById("newsContent").textContent = news.description;
-
-            savePlayedNews(news.title);
-            speakText(news.title, news.description);
+            if (!newsQueue.length) return;
+            const { title, description } = newsQueue.shift();
+            document.getElementById("newsTitle").textContent = title;
+            document.getElementById("newsContent").textContent = description;
+            savePlayedNews(title);
+            speakText(title, description);
         }
 
         function speakText(title, content) {
             speechSynthesis.cancel();
+            const voice = getSelectedVoice();
+            const utterTitle = new SpeechSynthesisUtterance(title);
+            const utterContent = new SpeechSynthesisUtterance(content);
 
-            let utterTitle = new SpeechSynthesisUtterance(title);
-            let utterContent = new SpeechSynthesisUtterance(content);
-
-            if (selectedVoice) {
-                utterTitle.voice = selectedVoice;
-                utterContent.voice = selectedVoice;
+            if (voice) {
+                utterTitle.voice = utterContent.voice = voice;
             }
+            utterTitle.lang = utterContent.lang = "zh-CN";
+            utterTitle.rate = utterContent.rate = 1.0;
 
-            utterTitle.lang = "zh-CN";
-            utterContent.lang = "zh-CN";
-            utterTitle.rate = 1.0;
-            utterContent.rate = 1.0;
-
-            utterTitle.onend = () => {
-                if (!isPaused) {
-                    speechSynthesis.speak(utterContent);
-                }
-            };
-
-            utterContent.onend = () => {
-                if (!isPaused) {
-                    readCurrentNews();
-                }
-            };
+            utterTitle.onend = () => !isPaused && speechSynthesis.speak(utterContent);
+            utterContent.onend = () => !isPaused && readCurrentNews();
 
             isSpeaking = true;
             speechSynthesis.speak(utterTitle);
-            document.getElementById("playPauseBtn").textContent = "⏸ 暂停";
         }
 
         function toggleSpeech() {
             if (!isSpeaking) return;
-
             if (isPaused) {
                 speechSynthesis.resume();
-                document.getElementById("playPauseBtn").textContent = "⏸ 暂停";
+                playPauseBtn.textContent = "⏸ 暂停";
             } else {
                 speechSynthesis.pause();
-                document.getElementById("playPauseBtn").textContent = "▶ 恢复";
+                playPauseBtn.textContent = "▶ 恢复";
             }
             isPaused = !isPaused;
         }
 
         function savePlayedNews(title) {
             playedNews.push(title);
-            if (playedNews.length > MAX_STORAGE_SIZE) {
-                playedNews.shift();
-            }
+            if (playedNews.length > 100) playedNews.shift();
             localStorage.setItem("playedNews", JSON.stringify(playedNews));
         }
     </script>
-
 </body>
 </html>
