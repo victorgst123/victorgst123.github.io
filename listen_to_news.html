@@ -65,6 +65,8 @@
             if (chineseVoices.length > 0) {
                 voiceSelect.value = 0;
                 selectedVoice = chineseVoices[0];
+            }else{
+                selectedVoice =  voices.filter(voice => voice.name.includes("Lilian"));
             }
         }
 
