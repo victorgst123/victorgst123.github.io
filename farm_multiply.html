@@ -1,624 +1,782 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Farm Animal Feeding Game - Multiplication Practice</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
-        body {
-            font-family: 'Comic Sans MS', 'Arial', sans-serif;
-            background: linear-gradient(to bottom, #87CEEB 0%, #98D98E 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-        }
+```
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background: linear-gradient(to bottom, #87CEEB 0%, #98D98E 100%);
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        overflow-x: hidden;
+        position: relative;
+    }
 
+    .game-container {
+        width: 100%;
+        max-width: 100vw;
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    h1 {
+        text-align: center;
+        color: #2c3e50;
+        font-size: clamp(1.5rem, 5vw, 2.5rem);
+        margin-bottom: 15px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 10px;
+    }
+
+    .score-board {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
+        margin-bottom: 20px;
+        padding: 0 5px;
+    }
+
+    .score-item {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 10px;
+        border-radius: 15px;
+        font-size: clamp(0.9rem, 3vw, 1.1rem);
+        font-weight: bold;
+        text-align: center;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .level-selector {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        padding: 0 5px;
+        flex-wrap: wrap;
+    }
+
+    .level-btn {
+        background: #4CAF50;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 12px;
+        font-size: clamp(0.9rem, 3vw, 1.1rem);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: bold;
+        flex: 1;
+        min-width: 90px;
+        max-width: 150px;
+        -webkit-appearance: none;
+    }
+
+    .level-btn:active {
+        transform: scale(0.95);
+    }
+
+    .level-btn.active {
+        background: #ff6b6b;
+        transform: scale(1.05);
+    }
+
+    .farm-area {
+        background: linear-gradient(to bottom, #e8f5e9 0%, #c8e6c9 100%);
+        border-radius: 20px;
+        padding: 15px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 10px;
+        box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .animal-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px 0;
+    }
+
+    .animal {
+        font-size: clamp(60px, 15vw, 100px);
+        animation: bounce 1s ease-in-out infinite;
+        filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.2));
+        user-select: none;
+    }
+
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-15px); }
+    }
+
+    .question-area {
+        background: white;
+        border-radius: 15px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .question {
+        font-size: clamp(1.1rem, 4vw, 1.8rem);
+        color: #2c3e50;
+        text-align: center;
+        margin-bottom: 15px;
+        font-weight: bold;
+        line-height: 1.4;
+    }
+
+    .food-display {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+        padding: 10px 0;
+        overflow-x: auto;
+        max-width: 100%;
+    }
+
+    .food-group {
+        display: inline-flex;
+        padding: 5px;
+        border: 2px dashed #ccc;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    .food-item {
+        font-size: clamp(25px, 6vw, 40px);
+        animation: foodAppear 0.5s ease;
+    }
+
+    @keyframes foodAppear {
+        from { 
+            transform: scale(0) rotate(180deg);
+            opacity: 0;
+        }
+        to { 
+            transform: scale(1) rotate(0);
+            opacity: 1;
+        }
+    }
+
+    .answer-options {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 10px 0;
+        margin-top: auto;
+    }
+
+    .answer-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 20px 15px;
+        font-size: clamp(1.3rem, 5vw, 1.8rem);
+        border-radius: 15px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: bold;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        -webkit-appearance: none;
+        user-select: none;
+    }
+
+    .answer-btn:active {
+        transform: scale(0.95);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .answer-btn.correct {
+        background: linear-gradient(135deg, #4CAF50, #45a049);
+        animation: correctPulse 0.5s ease;
+    }
+
+    .answer-btn.wrong {
+        background: linear-gradient(135deg, #ff6b6b, #ff5252);
+        animation: shake 0.5s ease;
+    }
+
+    @keyframes correctPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    .message {
+        text-align: center;
+        font-size: clamp(1.2rem, 4vw, 1.8rem);
+        font-weight: bold;
+        padding: 10px;
+        min-height: 40px;
+        animation: messageAppear 0.5s ease;
+    }
+
+    @keyframes messageAppear {
+        from { 
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        to { 
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .success-message {
+        color: #4CAF50;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .error-message {
+        color: #ff6b6b;
+    }
+
+    .celebration {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: clamp(100px, 25vw, 150px);
+        animation: celebrate 1s ease;
+        pointer-events: none;
+        z-index: 1000;
+    }
+
+    @keyframes celebrate {
+        0% { 
+            transform: translate(-50%, -50%) scale(0) rotate(0);
+            opacity: 1;
+        }
+        50% { 
+            transform: translate(-50%, -50%) scale(1.2) rotate(180deg);
+        }
+        100% { 
+            transform: translate(-50%, -50%) scale(0) rotate(360deg);
+            opacity: 0;
+        }
+    }
+
+    .start-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        min-height: 70vh;
+    }
+
+    .start-btn {
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+        color: #2c3e50;
+        border: none;
+        padding: 20px 40px;
+        font-size: clamp(1.3rem, 5vw, 1.8rem);
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 20px;
+        box-shadow: 0 6px 20px rgba(255, 165, 0, 0.4);
+        transition: all 0.3s ease;
+        -webkit-appearance: none;
+        width: 80%;
+        max-width: 300px;
+    }
+
+    .start-btn:active {
+        transform: scale(0.95);
+        box-shadow: 0 3px 15px rgba(255, 165, 0, 0.4);
+    }
+
+    .instructions {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 15px;
+        padding: 20px;
+        margin: 20px 0;
+        font-size: clamp(1rem, 3.5vw, 1.2rem);
+        color: #2c3e50;
+        line-height: 1.6;
+        width: 90%;
+        max-width: 400px;
+    }
+
+    .instructions h2 {
+        font-size: clamp(1.3rem, 4vw, 1.6rem);
+        margin-bottom: 15px;
+        color: #2c3e50;
+    }
+
+    .instructions p {
+        margin: 8px 0;
+    }
+
+    /* Landscape mode adjustments */
+    @media screen and (orientation: landscape) and (max-height: 500px) {
         .game-container {
-            max-width: 900px;
-            width: 100%;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 30px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            animation: fadeIn 0.5s ease;
+            padding: 10px;
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
+        
         h1 {
-            text-align: center;
-            color: #2c3e50;
-            font-size: 2.5em;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 1.5rem;
+            margin-bottom: 10px;
         }
-
+        
         .score-board {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-            gap: 15px;
+            margin-bottom: 10px;
         }
-
-        .score-item {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 20px;
-            font-size: 1.2em;
-            font-weight: bold;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
+        
         .level-selector {
-            text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 10px;
         }
-
-        .level-btn {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            margin: 5px;
-            border-radius: 15px;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: bold;
-        }
-
-        .level-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
-        }
-
-        .level-btn.active {
-            background: #ff6b6b;
-            transform: scale(1.1);
-        }
-
-        .farm-area {
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400"><rect fill="%2398D98E" width="800" height="400"/><path fill="%2387C87A" d="M0 300 Q200 280 400 300 T800 300 L800 400 L0 400 Z"/></svg>');
-            background-size: cover;
-            border-radius: 20px;
-            padding: 30px;
-            min-height: 300px;
-            position: relative;
-            box-shadow: inset 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .animal-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 30px;
-            min-height: 150px;
-        }
-
+        
         .animal {
-            font-size: 100px;
-            animation: bounce 1s ease-in-out infinite;
-            cursor: pointer;
-            transition: transform 0.3s ease;
-            filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.2));
+            font-size: 50px;
         }
-
-        .animal:hover {
-            transform: scale(1.2) rotate(10deg);
+        
+        .animal-container {
+            padding: 10px 0;
         }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-
-        .question-area {
-            background: white;
-            border-radius: 20px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
-
+        
         .question {
-            font-size: 2em;
-            color: #2c3e50;
-            text-align: center;
-            margin-bottom: 20px;
-            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
         }
-
-        .food-display {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 20px;
-            min-height: 50px;
-        }
-
-        .food-item {
-            font-size: 40px;
-            animation: foodAppear 0.5s ease;
-        }
-
-        @keyframes foodAppear {
-            from { 
-                transform: scale(0) rotate(180deg);
-                opacity: 0;
-            }
-            to { 
-                transform: scale(1) rotate(0);
-                opacity: 1;
-            }
-        }
-
+        
         .answer-options {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
         }
-
+        
         .answer-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.5em;
-            border-radius: 15px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: bold;
-            min-width: 80px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            padding: 12px 10px;
+            font-size: 1.2rem;
         }
+    }
 
-        .answer-btn:hover {
-            transform: translateY(-5px) scale(1.1);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-        }
-
-        .answer-btn.correct {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
-            animation: correctPulse 0.5s ease;
-        }
-
-        .answer-btn.wrong {
-            background: linear-gradient(135deg, #ff6b6b, #ff5252);
-            animation: shake 0.5s ease;
-        }
-
-        @keyframes correctPulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
-        }
-
-        .message {
-            text-align: center;
-            font-size: 1.8em;
-            font-weight: bold;
+    /* Tablet adjustments */
+    @media screen and (min-width: 768px) {
+        .game-container {
+            max-width: 600px;
+            margin: 0 auto;
+            border-radius: 30px;
             margin-top: 20px;
-            min-height: 50px;
-            animation: messageAppear 0.5s ease;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
-
-        @keyframes messageAppear {
-            from { 
-                opacity: 0;
-                transform: scale(0.5);
-            }
-            to { 
-                opacity: 1;
-                transform: scale(1);
-            }
+        
+        .answer-options {
+            grid-template-columns: repeat(4, 1fr);
         }
-
-        .success-message {
-            color: #4CAF50;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        
+        .level-btn {
+            flex: 0 1 auto;
         }
+    }
 
-        .error-message {
-            color: #ff6b6b;
-        }
-
-        .celebration {
+    /* Prevent scroll bounce on iOS */
+    @supports (-webkit-touch-callout: none) {
+        body {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 150px;
-            animation: celebrate 1s ease;
-            pointer-events: none;
-            z-index: 1000;
+            width: 100%;
         }
+    }
 
-        @keyframes celebrate {
-            0% { 
-                transform: translate(-50%, -50%) scale(0) rotate(0);
-                opacity: 1;
-            }
-            50% { 
-                transform: translate(-50%, -50%) scale(1.5) rotate(180deg);
-            }
-            100% { 
-                transform: translate(-50%, -50%) scale(0) rotate(360deg);
-                opacity: 0;
-            }
-        }
+    /* Loading state */
+    button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+</style>
+```
 
-        .start-screen {
-            text-align: center;
-            padding: 40px;
-        }
-
-        .start-btn {
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            color: #2c3e50;
-            border: none;
-            padding: 20px 40px;
-            font-size: 1.8em;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 20px;
-            box-shadow: 0 8px 25px rgba(255, 165, 0, 0.4);
-            transition: all 0.3s ease;
-        }
-
-        .start-btn:hover {
-            transform: translateY(-5px) scale(1.1);
-            box-shadow: 0 12px 35px rgba(255, 165, 0, 0.6);
-        }
-
-        .instructions {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 15px;
-            padding: 20px;
-            margin: 20px 0;
-            font-size: 1.2em;
-            color: #2c3e50;
-            line-height: 1.6;
-        }
-
-        @media (max-width: 600px) {
-            h1 { font-size: 1.8em; }
-            .animal { font-size: 80px; }
-            .question { font-size: 1.5em; }
-            .answer-btn { 
-                padding: 12px 20px;
-                font-size: 1.2em;
-            }
-        }
-    </style>
 </head>
 <body>
     <div class="game-container">
-        <h1>🌾 Farm Animal Feeding Game 🌾</h1>
-        
-        <div id="startScreen" class="start-screen">
-            <div class="animal" style="font-size: 120px;">🐮</div>
-            <div class="instructions">
-                <h2>How to Play</h2>
-                <p>🎯 Help feed the farm animals!</p>
-                <p>📝 Each animal needs several groups of food</p>
-                <p>🔢 Calculate how much food they need in total</p>
-                <p>⭐ Get points for correct answers!</p>
-            </div>
-            <button class="start-btn" onclick="startGame()">Start Game</button>
+        <h1>🌾 Farm Feeding Game 🌾</h1>
+
+```
+    <div id="startScreen" class="start-screen">
+        <div class="animal" style="font-size: clamp(80px, 20vw, 120px);">🐮</div>
+        <div class="instructions">
+            <h2>How to Play</h2>
+            <p>🎯 Help feed the animals!</p>
+            <p>📝 Count the food groups</p>
+            <p>🔢 Calculate the total</p>
+            <p>⭐ Earn points!</p>
         </div>
-
-        <div id="gameScreen" style="display: none;">
-            <div class="score-board">
-                <div class="score-item">⭐ Score: <span id="score">0</span></div>
-                <div class="score-item">📝 Question: <span id="questionCount">1</span>/10</div>
-                <div class="score-item">✅ Correct: <span id="correct">0</span></div>
-            </div>
-
-            <div class="level-selector">
-                <button class="level-btn active" onclick="setLevel(1)">Easy (1-5)</button>
-                <button class="level-btn" onclick="setLevel(2)">Medium (2-9)</button>
-                <button class="level-btn" onclick="setLevel(3)">Hard (5-10)</button>
-            </div>
-
-            <div class="farm-area">
-                <div class="animal-container">
-                    <div id="animal" class="animal"></div>
-                </div>
-
-                <div class="question-area">
-                    <div class="question" id="question"></div>
-                    <div class="food-display" id="foodDisplay"></div>
-                    <div class="answer-options" id="answerOptions"></div>
-                </div>
-
-                <div class="message" id="message"></div>
-            </div>
-        </div>
+        <button class="start-btn" onclick="startGame()">Start Game</button>
     </div>
 
-    <script>
-        const animals = ['🐮', '🐷', '🐔', '🐑', '🐰', '🦆', '🐴', '🐶', '🐱', '🐐'];
-        const foods = {
-            '🐮': '🌾',
-            '🐷': '🌽',
-            '🐔': '🌻',
-            '🐑': '🌿',
-            '🐰': '🥕',
-            '🦆': '🌾',
-            '🐴': '🍎',
-            '🐶': '🦴',
-            '🐱': '🐟',
-            '🐐': '🌿'
+    <div id="gameScreen" style="display: none;">
+        <div class="score-board">
+            <div class="score-item">⭐ <span id="score">0</span></div>
+            <div class="score-item">📝 <span id="questionCount">1</span>/10</div>
+            <div class="score-item">✅ <span id="correct">0</span></div>
+        </div>
+
+        <div class="level-selector">
+            <button class="level-btn active" onclick="setLevel(1)">Easy</button>
+            <button class="level-btn" onclick="setLevel(2)">Medium</button>
+            <button class="level-btn" onclick="setLevel(3)">Hard</button>
+        </div>
+
+        <div class="farm-area">
+            <div class="animal-container">
+                <div id="animal" class="animal"></div>
+            </div>
+
+            <div class="question-area">
+                <div class="question" id="question"></div>
+                <div class="food-display" id="foodDisplay"></div>
+                <div class="answer-options" id="answerOptions"></div>
+            </div>
+
+            <div class="message" id="message"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Prevent double-tap zoom on iOS
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function(event) {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, false);
+
+    // Prevent pull-to-refresh
+    let startY = 0;
+    document.addEventListener('touchstart', function(e) {
+        startY = e.touches[0].pageY;
+    }, { passive: false });
+
+    document.addEventListener('touchmove', function(e) {
+        const y = e.touches[0].pageY;
+        const scrolling = document.documentElement.scrollTop || document.body.scrollTop;
+        if (scrolling === 0 && y > startY) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    const animals = ['🐮', '🐷', '🐔', '🐑', '🐰', '🦆', '🐴', '🐶', '🐱', '🐐'];
+    const foods = {
+        '🐮': '🌾',
+        '🐷': '🌽',
+        '🐔': '🌻',
+        '🐑': '🌿',
+        '🐰': '🥕',
+        '🦆': '🌾',
+        '🐴': '🍎',
+        '🐶': '🦴',
+        '🐱': '🐟',
+        '🐐': '🌿'
+    };
+
+    const encouragements = [
+        'Awesome! 🎉',
+        'Great job! ⭐',
+        'Keep going! 💪',
+        'Well done! 👏',
+        'Amazing! 🌟',
+        'Perfect! ✨',
+        'Super! 🏆',
+        'Excellent! 🎊'
+    ];
+
+    let score = 0;
+    let questionNumber = 0;
+    let correctAnswers = 0;
+    let currentAnswer = 0;
+    let level = 1;
+    let isAnswering = false;
+
+    function startGame() {
+        document.getElementById('startScreen').style.display = 'none';
+        document.getElementById('gameScreen').style.display = 'flex';
+        document.getElementById('gameScreen').style.flexDirection = 'column';
+        resetGame();
+        generateQuestion();
+    }
+
+    function resetGame() {
+        score = 0;
+        questionNumber = 0;
+        correctAnswers = 0;
+        updateScore();
+    }
+
+    function setLevel(newLevel) {
+        if (isAnswering) return;
+        level = newLevel;
+        document.querySelectorAll('.level-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        generateQuestion();
+    }
+
+    function generateQuestion() {
+        if (questionNumber >= 10) {
+            endGame();
+            return;
+        }
+
+        isAnswering = false;
+        questionNumber++;
+        document.getElementById('questionCount').textContent = questionNumber;
+
+        const animal = animals[Math.floor(Math.random() * animals.length)];
+        const food = foods[animal];
+        
+        let num1, num2;
+        if (level === 1) {
+            num1 = Math.floor(Math.random() * 5) + 1;
+            num2 = Math.floor(Math.random() * 5) + 1;
+        } else if (level === 2) {
+            num1 = Math.floor(Math.random() * 8) + 2;
+            num2 = Math.floor(Math.random() * 8) + 2;
+        } else {
+            num1 = Math.floor(Math.random() * 6) + 5;
+            num2 = Math.floor(Math.random() * 6) + 5;
+        }
+
+        currentAnswer = num1 * num2;
+
+        document.getElementById('animal').textContent = animal;
+        
+        // Simplified question text for mobile
+        document.getElementById('question').innerHTML = 
+            `<span style="color: #ff6b6b;">${num1}</span> groups × <span style="color: #667eea;">${num2}</span> ${getFoodName(food)} each<br>
+            = ? ${getFoodName(food)} total`;
+
+        // Display food visually
+        const foodDisplay = document.getElementById('foodDisplay');
+        foodDisplay.innerHTML = '';
+        
+        // Limit visual display on very small screens
+        const maxGroups = window.innerWidth < 360 ? Math.min(num1, 4) : num1;
+        const showEllipsis = maxGroups < num1;
+        
+        for (let i = 0; i < maxGroups; i++) {
+            const group = document.createElement('div');
+            group.className = 'food-group';
+            for (let j = 0; j < num2; j++) {
+                const foodItem = document.createElement('span');
+                foodItem.className = 'food-item';
+                foodItem.textContent = food;
+                foodItem.style.animationDelay = `${(i * num2 + j) * 0.05}s`;
+                group.appendChild(foodItem);
+            }
+            foodDisplay.appendChild(group);
+        }
+        
+        if (showEllipsis) {
+            const ellipsis = document.createElement('div');
+            ellipsis.style.fontSize = 'clamp(20px, 5vw, 30px)';
+            ellipsis.style.padding = '0 10px';
+            ellipsis.textContent = '...';
+            foodDisplay.appendChild(ellipsis);
+        }
+
+        generateAnswerOptions();
+        document.getElementById('message').textContent = '';
+    }
+
+    function getAnimalName(emoji) {
+        const names = {
+            '🐮': 'cow',
+            '🐷': 'pig',
+            '🐔': 'chicken',
+            '🐑': 'sheep',
+            '🐰': 'rabbit',
+            '🦆': 'duck',
+            '🐴': 'horse',
+            '🐶': 'dog',
+            '🐱': 'cat',
+            '🐐': 'goat'
         };
+        return names[emoji] || 'animal';
+    }
 
-        const encouragements = [
-            'Awesome! 🎉',
-            'You\'re so smart! ⭐',
-            'Keep it up! 💪',
-            'Well done! 👏',
-            'Amazing! 🌟',
-            'Perfect! ✨',
-            'You\'re a math genius! 🏆',
-            'Super! 🎊'
-        ];
+    function getFoodName(emoji) {
+        const names = {
+            '🌾': 'wheat',
+            '🌽': 'corn',
+            '🌻': 'seeds',
+            '🌿': 'grass',
+            '🥕': 'carrots',
+            '🍎': 'apples',
+            '🦴': 'bones',
+            '🐟': 'fish'
+        };
+        return names[emoji] || 'food';
+    }
 
-        let score = 0;
-        let questionNumber = 0;
-        let correctAnswers = 0;
-        let currentAnswer = 0;
-        let level = 1;
-        let isAnswering = false;
-
-        function startGame() {
-            document.getElementById('startScreen').style.display = 'none';
-            document.getElementById('gameScreen').style.display = 'block';
-            resetGame();
-            generateQuestion();
+    function generateAnswerOptions() {
+        const options = [currentAnswer];
+        
+        while (options.length < 4) {
+            let wrong = currentAnswer + (Math.random() > 0.5 ? 1 : -1) * 
+                       (Math.floor(Math.random() * 10) + 1);
+            if (wrong > 0 && !options.includes(wrong)) {
+                options.push(wrong);
+            }
         }
 
-        function resetGame() {
-            score = 0;
-            questionNumber = 0;
-            correctAnswers = 0;
+        options.sort(() => Math.random() - 0.5);
+
+        const container = document.getElementById('answerOptions');
+        container.innerHTML = '';
+        
+        options.forEach(option => {
+            const btn = document.createElement('button');
+            btn.className = 'answer-btn';
+            btn.textContent = option;
+            btn.onclick = () => checkAnswer(option, btn);
+            container.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(answer, button) {
+        if (isAnswering) return;
+        isAnswering = true;
+
+        // Disable all buttons
+        const buttons = document.querySelectorAll('.answer-btn');
+        buttons.forEach(btn => btn.disabled = true);
+        
+        if (answer === currentAnswer) {
+            button.classList.add('correct');
+            score += level * 10;
+            correctAnswers++;
             updateScore();
-        }
-
-        function setLevel(newLevel) {
-            level = newLevel;
-            document.querySelectorAll('.level-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            generateQuestion();
-        }
-
-        function generateQuestion() {
-            if (questionNumber >= 10) {
-                endGame();
-                return;
-            }
-
-            isAnswering = false;
-            questionNumber++;
-            document.getElementById('questionCount').textContent = questionNumber;
-
-            const animal = animals[Math.floor(Math.random() * animals.length)];
-            const food = foods[animal];
             
-            let num1, num2;
-            if (level === 1) {
-                num1 = Math.floor(Math.random() * 5) + 1;
-                num2 = Math.floor(Math.random() * 5) + 1;
-            } else if (level === 2) {
-                num1 = Math.floor(Math.random() * 8) + 2;
-                num2 = Math.floor(Math.random() * 8) + 2;
-            } else {
-                num1 = Math.floor(Math.random() * 6) + 5;
-                num2 = Math.floor(Math.random() * 6) + 5;
-            }
-
-            currentAnswer = num1 * num2;
-
-            document.getElementById('animal').textContent = animal;
-            document.getElementById('question').innerHTML = 
-                `The ${getAnimalName(animal)} needs <span style="color: #ff6b6b;">${num1}</span> groups of ${getFoodName(food)},<br>
-                Each group has <span style="color: #667eea;">${num2}</span> items,<br>
-                How many ${getFoodName(food)} are needed in total?`;
-
-            // Display food visually
-            const foodDisplay = document.getElementById('foodDisplay');
-            foodDisplay.innerHTML = '';
-            for (let i = 0; i < num1; i++) {
-                const group = document.createElement('div');
-                group.style.display = 'inline-block';
-                group.style.margin = '5px';
-                group.style.padding = '5px';
-                group.style.border = '2px dashed #ccc';
-                group.style.borderRadius = '10px';
-                for (let j = 0; j < num2; j++) {
-                    const foodItem = document.createElement('span');
-                    foodItem.className = 'food-item';
-                    foodItem.textContent = food;
-                    foodItem.style.animationDelay = `${(i * num2 + j) * 0.05}s`;
-                    group.appendChild(foodItem);
-                }
-                foodDisplay.appendChild(group);
-            }
-
-            generateAnswerOptions();
-            document.getElementById('message').textContent = '';
-        }
-
-        function getAnimalName(emoji) {
-            const names = {
-                '🐮': 'cow',
-                '🐷': 'pig',
-                '🐔': 'chicken',
-                '🐑': 'sheep',
-                '🐰': 'rabbit',
-                '🦆': 'duck',
-                '🐴': 'horse',
-                '🐶': 'dog',
-                '🐱': 'cat',
-                '🐐': 'goat'
-            };
-            return names[emoji] || 'animal';
-        }
-
-        function getFoodName(emoji) {
-            const names = {
-                '🌾': 'wheat',
-                '🌽': 'corn',
-                '🌻': 'sunflower seeds',
-                '🌿': 'grass',
-                '🥕': 'carrots',
-                '🍎': 'apples',
-                '🦴': 'bones',
-                '🐟': 'fish'
-            };
-            return names[emoji] || 'food';
-        }
-
-        function generateAnswerOptions() {
-            const options = [currentAnswer];
+            const message = document.getElementById('message');
+            message.className = 'message success-message';
+            message.textContent = encouragements[Math.floor(Math.random() * encouragements.length)];
             
-            while (options.length < 4) {
-                let wrong = currentAnswer + (Math.random() > 0.5 ? 1 : -1) * 
-                           (Math.floor(Math.random() * 10) + 1);
-                if (wrong > 0 && !options.includes(wrong)) {
-                    options.push(wrong);
-                }
-            }
-
-            options.sort(() => Math.random() - 0.5);
-
-            const container = document.getElementById('answerOptions');
-            container.innerHTML = '';
-            
-            options.forEach(option => {
-                const btn = document.createElement('button');
-                btn.className = 'answer-btn';
-                btn.textContent = option;
-                btn.onclick = () => checkAnswer(option, btn);
-                container.appendChild(btn);
-            });
-        }
-
-        function checkAnswer(answer, button) {
-            if (isAnswering) return;
-            isAnswering = true;
-
-            const buttons = document.querySelectorAll('.answer-btn');
-            
-            if (answer === currentAnswer) {
-                button.classList.add('correct');
-                score += level * 10;
-                correctAnswers++;
-                updateScore();
-                
-                const message = document.getElementById('message');
-                message.className = 'message success-message';
-                message.textContent = encouragements[Math.floor(Math.random() * encouragements.length)];
-                
-                showCelebration();
-                
-                setTimeout(() => {
-                    generateQuestion();
-                }, 2000);
-            } else {
-                button.classList.add('wrong');
-                
-                buttons.forEach(btn => {
-                    if (parseInt(btn.textContent) === currentAnswer) {
-                        btn.classList.add('correct');
-                    }
-                });
-                
-                const message = document.getElementById('message');
-                message.className = 'message error-message';
-                message.textContent = `Oops! The correct answer is ${currentAnswer}`;
-                
-                setTimeout(() => {
-                    generateQuestion();
-                }, 2500);
-            }
-        }
-
-        function showCelebration() {
-            const celebration = document.createElement('div');
-            celebration.className = 'celebration';
-            celebration.textContent = '🎉';
-            document.body.appendChild(celebration);
+            showCelebration();
             
             setTimeout(() => {
-                celebration.remove();
-            }, 1000);
-        }
-
-        function updateScore() {
-            document.getElementById('score').textContent = score;
-            document.getElementById('correct').textContent = correctAnswers;
-        }
-
-        function endGame() {
-            const percentage = (correctAnswers / 10) * 100;
-            let medal = '';
-            let comment = '';
+                buttons.forEach(btn => btn.disabled = false);
+                generateQuestion();
+            }, 1500);
+        } else {
+            button.classList.add('wrong');
             
-            if (percentage === 100) {
-                medal = '🏆';
-                comment = 'Perfect! You\'re a multiplication master!';
-            } else if (percentage >= 80) {
-                medal = '🥇';
-                comment = 'Excellent! You did really well!';
-            } else if (percentage >= 60) {
-                medal = '🥈';
-                comment = 'Good job! Keep practicing!';
-            } else {
-                medal = '🥉';
-                comment = 'Nice try! Practice makes perfect!';
-            }
-
-            const gameScreen = document.getElementById('gameScreen');
-            gameScreen.innerHTML = `
-                <div class="start-screen">
-                    <div style="font-size: 120px;">${medal}</div>
-                    <h2 style="color: #2c3e50; margin: 20px 0;">Game Over!</h2>
-                    <div class="instructions">
-                        <p style="font-size: 1.5em; color: #667eea;">Final Score: ${score} points</p>
-                        <p style="font-size: 1.3em; color: #4CAF50;">You got ${correctAnswers}/10 correct!</p>
-                        <p style="font-size: 1.2em; color: #ff6b6b;">${comment}</p>
-                    </div>
-                    <button class="start-btn" onclick="location.reload()">Play Again</button>
-                </div>
-            `;
+            buttons.forEach(btn => {
+                if (parseInt(btn.textContent) === currentAnswer) {
+                    btn.classList.add('correct');
+                }
+            });
+            
+            const message = document.getElementById('message');
+            message.className = 'message error-message';
+            message.textContent = `Answer: ${currentAnswer}`;
+            
+            setTimeout(() => {
+                buttons.forEach(btn => btn.disabled = false);
+                generateQuestion();
+            }, 2000);
         }
-    </script>
+    }
+
+    function showCelebration() {
+        const celebration = document.createElement('div');
+        celebration.className = 'celebration';
+        celebration.textContent = '🎉';
+        document.body.appendChild(celebration);
+        
+        setTimeout(() => {
+            celebration.remove();
+        }, 1000);
+    }
+
+    function updateScore() {
+        document.getElementById('score').textContent = score;
+        document.getElementById('correct').textContent = correctAnswers;
+    }
+
+    function endGame() {
+        const percentage = (correctAnswers / 10) * 100;
+        let medal = '';
+        let comment = '';
+        
+        if (percentage === 100) {
+            medal = '🏆';
+            comment = 'Perfect!';
+        } else if (percentage >= 80) {
+            medal = '🥇';
+            comment = 'Excellent!';
+        } else if (percentage >= 60) {
+            medal = '🥈';
+            comment = 'Good job!';
+        } else {
+            medal = '🥉';
+            comment = 'Keep practicing!';
+        }
+
+        const gameScreen = document.getElementById('gameScreen');
+        gameScreen.innerHTML = `
+            <div class="start-screen">
+                <div style="font-size: clamp(80px, 20vw, 120px);">${medal}</div>
+                <h2 style="color: #2c3e50; margin: 20px 0; font-size: clamp(1.5rem, 5vw, 2rem);">Game Over!</h2>
+                <div class="instructions">
+                    <p style="font-size: clamp(1.2rem, 4vw, 1.5rem); color: #667eea;">Score: ${score}</p>
+                    <p style="font-size: clamp(1.1rem, 3.5vw, 1.3rem); color: #4CAF50;">${correctAnswers}/10 correct</p>
+                    <p style="font-size: clamp(1rem, 3.5vw, 1.2rem); color: #ff6b6b;">${comment}</p>
+                </div>
+                <button class="start-btn" onclick="location.reload()">Play Again</button>
+            </div>
+        `;
+    }
+
+    // Adjust viewport height for mobile browsers
+    function setViewportHeight() {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', setViewportHeight);
+</script>
+```
+
 </body>
 </html>
