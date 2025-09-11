@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可展开的立方体和三角锥</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+        }
+        .btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn.active {
+            background: rgba(255, 255, 255, 0.4);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="instructions">
+            <strong>操作说明:</strong><br>
+            • 右键拖拽: 旋转几何体<br>
+            • 左键点击: 展开/折叠几何体<br>
+            • 滚轮: 缩放视角<br>
+            • 按钮: 切换立方体/三角锥
+        </div>
+        <div id="controls">
+            <button id="cubeBtn" class="btn active">立方体</button>
+            <button id="pyramidBtn" class="btn">三角锥</button>
+            <button id="resetBtn" class="btn">重置视角</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer;
+        let currentShape = null;
+        let isUnfolded = false;
+        let shapeType = 'cube';
+        
+        // 鼠标控制变量
+        let isRightMouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let currentRotationX = 0, currentRotationY = 0;
+
+        function init() {
+            // 创建场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            // 创建相机
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(5, 5, 5);
+            camera.lookAt(0, 0, 0);
+
+            // 创建渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('container').appendChild(renderer.domElement);
+
+            // 创建初始形状（立方体）
+            createShape('cube');
+
+            // 添加光照
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            // 添加事件监听器
+            addEventListeners();
+
+            // 开始动画循环
+            animate();
+        }
+
+        function createShape(type) {
+            // 清除当前形状
+            if (currentShape) {
+                scene.remove(currentShape);
+            }
+            
+            isUnfolded = false;
+            shapeType = type;
+            
+            if (type === 'cube') {
+                currentShape = createCube();
+            } else if (type === 'pyramid') {
+                currentShape = createPyramid();
+            }
+            
+            scene.add(currentShape);
+        }
+
+        function createCube() {
+            const cube = new THREE.Group();
+            cube.faces = [];
+            cube.originalPositions = [];
+            cube.unfoldedPositions = [];
+            
+            const faceColors = [
+                0xff4444, // 前面 - 红色
+                0x44ff44, // 后面 - 绿色
+                0x4444ff, // 上面 - 蓝色
+                0xffff44, // 下面 - 黄色
+                0xff44ff, // 右面 - 品红
+                0x44ffff  // 左面 - 青色
+            ];
+
+            const faceNames = ['Front', 'Back', 'Top', 'Bottom', 'Right', 'Left'];
+            
+            // 立方体6个面的位置和旋转
+            const faceConfigs = [
+                { pos: [0, 0, 0.5], rot: [0, 0, 0] },      // 前面
+                { pos: [0, 0, -0.5], rot: [0, Math.PI, 0] }, // 后面
+                { pos: [0, 0.5, 0], rot: [-Math.PI/2, 0, 0] }, // 上面
+                { pos: [0, -0.5, 0], rot: [Math.PI/2, 0, 0] }, // 下面
+                { pos: [0.5, 0, 0], rot: [0, Math.PI/2, 0] },  // 右面
+                { pos: [-0.5, 0, 0], rot: [0, -Math.PI/2, 0] } // 左面
+            ];
+
+            for (let i = 0; i < 6; i++) {
+                const geometry = new THREE.PlaneGeometry(1, 1);
+                const material = new THREE.MeshLambertMaterial({ 
+                    color: faceColors[i],
+                    side: THREE.DoubleSide 
+                });
+                
+                const face = new THREE.Mesh(geometry, material);
+                face.position.set(...faceConfigs[i].pos);
+                face.rotation.set(...faceConfigs[i].rot);
+                
+                // 添加文字标签
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = canvas.height = 256;
+                context.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                context.fillRect(0, 0, 256, 256);
+                context.fillStyle = 'black';
+                context.font = 'bold 40px Arial';
+                context.textAlign = 'center';
+                context.fillText(faceNames[i], 128, 140);
+                
+                const textTexture = new THREE.CanvasTexture(canvas);
+                const textMaterial = new THREE.MeshLambertMaterial({ 
+                    map: textTexture,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const textGeometry = new THREE.PlaneGeometry(0.8, 0.8);
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                textMesh.position.copy(face.position);
+                textMesh.rotation.copy(face.rotation);
+                textMesh.position.add(face.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.01));
+                
+                cube.add(face);
+                cube.add(textMesh);
+                cube.faces.push({ face, text: textMesh });
+                
+                // 存储原始位置
+                cube.originalPositions.push({
+                    facePos: face.position.clone(),
+                    faceRot: face.rotation.clone(),
+                    textPos: textMesh.position.clone(),
+                    textRot: textMesh.rotation.clone()
+                });
+            }
+
+            // 计算展开位置（十字形展开）
+            const unfoldOffsets = [
+                [0, 0],    // 前面 - 中心
+                [0, -2],   // 后面 - 下方
+                [0, 1],    // 上面 - 上方
+                [0, -1],   // 下面 - 下方
+                [1, 0],    // 右面 - 右侧
+                [-1, 0]    // 左面 - 左侧
+            ];
+
+            for (let i = 0; i < 6; i++) {
+                const [offsetX, offsetY] = unfoldOffsets[i];
+                cube.unfoldedPositions.push({
+                    facePos: new THREE.Vector3(offsetX, offsetY, 0),
+                    faceRot: new THREE.Euler(0, 0, 0),
+                    textPos: new THREE.Vector3(offsetX, offsetY, 0.01),
+                    textRot: new THREE.Euler(0, 0, 0)
+                });
+            }
+
+            return cube;
+        }
+
+        function createPyramid() {
+            const pyramid = new THREE.Group();
+            pyramid.faces = [];
+            pyramid.originalPositions = [];
+            pyramid.unfoldedPositions = [];
+
+            const faceColors = [
+                0xff4444, // 底面 - 红色
+                0x44ff44, // 面1 - 绿色
+                0x4444ff, // 面2 - 蓝色
+                0xffff44  // 面3 - 黄色
+            ];
+
+            // 三角锥的顶点坐标
+            const height = 1.5;
+            const baseRadius = 0.8;
+            const vertices = [
+                new THREE.Vector3(0, 0, baseRadius),      // 底面顶点1
+                new THREE.Vector3(-baseRadius * Math.sin(2*Math.PI/3), 0, baseRadius * Math.cos(2*Math.PI/3)), // 底面顶点2
+                new THREE.Vector3(baseRadius * Math.sin(2*Math.PI/3), 0, baseRadius * Math.cos(2*Math.PI/3)),   // 底面顶点3
+                new THREE.Vector3(0, height, 0)           // 顶点
+            ];
+
+            // 创建4个三角形面
+            const faceIndices = [
+                [0, 2, 1], // 底面 (逆时针)
+                [0, 1, 3], // 侧面1
+                [1, 2, 3], // 侧面2
+                [2, 0, 3]  // 侧面3
+            ];
+
+            for (let i = 0; i < 4; i++) {
+                const [a, b, c] = faceIndices[i];
+                const v1 = vertices[a];
+                const v2 = vertices[b];
+                const v3 = vertices[c];
+
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array([
+                    v1.x, v1.y, v1.z,
+                    v2.x, v2.y, v2.z,
+                    v3.x, v3.y, v3.z
+                ]);
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.computeVertexNormals();
+
+                const material = new THREE.MeshLambertMaterial({ 
+                    color: faceColors[i],
+                    side: THREE.DoubleSide 
+                });
+                
+                const face = new THREE.Mesh(geometry, material);
+                
+                pyramid.add(face);
+                pyramid.faces.push({ face, text: null });
+                
+                // 存储原始位置
+                pyramid.originalPositions.push({
+                    facePos: face.position.clone(),
+                    faceRot: face.rotation.clone(),
+                    textPos: null,
+                    textRot: null
+                });
+            }
+
+            // 展开位置：4个三角形都在同一个平面上 (z=0)
+            const unfoldOffsets = [
+                [-1.8, 0, 0],  // 底面 - 最左
+                [-0.6, 0, 0],  // 侧面1 - 左中
+                [0.6, 0, 0],   // 侧面2 - 右中
+                [1.8, 0, 0]    // 侧面3 - 最右
+            ];
+
+            for (let i = 0; i < 4; i++) {
+                const [offsetX, offsetY, offsetZ] = unfoldOffsets[i];
+                pyramid.unfoldedPositions.push({
+                    facePos: new THREE.Vector3(offsetX, offsetY, offsetZ),
+                    faceRot: new THREE.Euler(0, 0, 0), // 所有面都平放在同一平面
+                    textPos: null,
+                    textRot: null
+                });
+            }
+
+            return pyramid;
+        }
+
+        function addEventListeners() {
+            const canvas = renderer.domElement;
+
+            // 鼠标按下事件
+            canvas.addEventListener('mousedown', (event) => {
+                event.preventDefault();
+                
+                if (event.button === 2) { // 右键
+                    isRightMouseDown = true;
+                    mouseX = event.clientX;
+                    mouseY = event.clientY;
+                } else if (event.button === 0) { // 左键
+                    toggleUnfold();
+                }
+            });
+
+            // 鼠标移动事件
+            canvas.addEventListener('mousemove', (event) => {
+                if (isRightMouseDown) {
+                    const deltaX = event.clientX - mouseX;
+                    const deltaY = event.clientY - mouseY;
+                    
+                    targetRotationY += deltaX * 0.01;
+                    targetRotationX += deltaY * 0.01;
+                    
+                    mouseX = event.clientX;
+                    mouseY = event.clientY;
+                }
+            });
+
+            // 鼠标抬起事件
+            canvas.addEventListener('mouseup', (event) => {
+                if (event.button === 2) {
+                    isRightMouseDown = false;
+                }
+            });
+
+            // 禁用右键菜单
+            canvas.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+            });
+
+            // 鼠标滚轮事件
+            canvas.addEventListener('wheel', (event) => {
+                event.preventDefault();
+                const scale = event.deltaY > 0 ? 1.1 : 0.9;
+                camera.position.multiplyScalar(scale);
+                camera.position.clampLength(3, 20);
+            });
+
+            // 形状切换按钮
+            document.getElementById('cubeBtn').addEventListener('click', () => {
+                createShape('cube');
+                document.getElementById('cubeBtn').classList.add('active');
+                document.getElementById('pyramidBtn').classList.remove('active');
+            });
+
+            document.getElementById('pyramidBtn').addEventListener('click', () => {
+                createShape('pyramid');
+                document.getElementById('pyramidBtn').classList.add('active');
+                document.getElementById('cubeBtn').classList.remove('active');
+            });
+
+            // 重置按钮
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                camera.position.set(5, 5, 5);
+                camera.lookAt(0, 0, 0);
+                targetRotationX = currentRotationX = 0;
+                targetRotationY = currentRotationY = 0;
+                if (currentShape) {
+                    currentShape.rotation.set(0, 0, 0);
+                }
+            });
+
+            // 窗口大小调整
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function toggleUnfold() {
+            if (!currentShape) return;
+            
+            isUnfolded = !isUnfolded;
+            
+            for (let i = 0; i < currentShape.faces.length; i++) {
+                const { face, text } = currentShape.faces[i];
+                const startPos = isUnfolded ? currentShape.originalPositions[i] : currentShape.unfoldedPositions[i];
+                const endPos = isUnfolded ? currentShape.unfoldedPositions[i] : currentShape.originalPositions[i];
+                
+                animateToPosition(face, text, startPos, endPos, 1000);
+            }
+        }
+
+        function animateToPosition(face, text, start, end, duration) {
+            const startTime = Date.now();
+            
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = easeInOutCubic(progress);
+                
+                // 插值位置
+                face.position.lerpVectors(start.facePos, end.facePos, easeProgress);
+                if (text && start.textPos && end.textPos) {
+                    text.position.lerpVectors(start.textPos, end.textPos, easeProgress);
+                }
+                
+                // 插值旋转
+                face.rotation.x = THREE.MathUtils.lerp(start.faceRot.x, end.faceRot.x, easeProgress);
+                face.rotation.y = THREE.MathUtils.lerp(start.faceRot.y, end.faceRot.y, easeProgress);
+                face.rotation.z = THREE.MathUtils.lerp(start.faceRot.z, end.faceRot.z, easeProgress);
+                
+                if (text && start.textRot && end.textRot) {
+                    text.rotation.x = THREE.MathUtils.lerp(start.textRot.x, end.textRot.x, easeProgress);
+                    text.rotation.y = THREE.MathUtils.lerp(start.textRot.y, end.textRot.y, easeProgress);
+                    text.rotation.z = THREE.MathUtils.lerp(start.textRot.z, end.textRot.z, easeProgress);
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            }
+            
+            animate();
+        }
+
+        function easeInOutCubic(t) {
+            return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // 平滑旋转
+            currentRotationX += (targetRotationX - currentRotationX) * 0.05;
+            currentRotationY += (targetRotationY - currentRotationY) * 0.05;
+            
+            if (currentShape) {
+                currentShape.rotation.x = currentRotationX;
+                currentShape.rotation.y = currentRotationY;
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // 初始化程序
+        init();
+    </script>
+</body>
+</html>
