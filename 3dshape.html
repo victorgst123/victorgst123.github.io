@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>可展开的立方体和三角锥</title>
     <style>
         body {
@@ -11,6 +11,7 @@
             background: linear-gradient(135deg, #1e3c72, #2a5298);
             overflow: hidden;
             font-family: Arial, sans-serif;
+            touch-action: none;
         }
         #container {
             width: 100vw;
@@ -19,27 +20,28 @@
         }
         #instructions {
             position: absolute;
-            top: 20px;
-            left: 20px;
+            top: 10px;
+            left: 10px;
             color: white;
             background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 14px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
             z-index: 100;
             backdrop-filter: blur(10px);
+            max-width: 200px;
         }
         #controls {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 10px;
+            right: 10px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             z-index: 100;
         }
         .btn {
-            padding: 10px 20px;
+            padding: 12px 16px;
             background: rgba(255, 255, 255, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.3);
             color: white;
@@ -48,14 +50,30 @@
             font-size: 14px;
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
+            min-width: 80px;
+            text-align: center;
+            user-select: none;
         }
-        .btn:hover {
+        .btn:hover, .btn:active {
             background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
+            transform: scale(0.98);
         }
         .btn.active {
             background: rgba(255, 255, 255, 0.4);
             border-color: rgba(255, 255, 255, 0.6);
+        }
+        
+        @media (max-width: 480px) {
+            #instructions {
+                font-size: 10px;
+                padding: 8px;
+                max-width: 150px;
+            }
+            .btn {
+                padding: 10px 12px;
+                font-size: 12px;
+                min-width: 70px;
+            }
         }
     </style>
 </head>
@@ -63,15 +81,15 @@
     <div id="container">
         <div id="instructions">
             <strong>操作说明:</strong><br>
-            • 右键拖拽: 旋转几何体<br>
-            • 左键点击: 展开/折叠几何体<br>
-            • 滚轮: 缩放视角<br>
-            • 按钮: 切换立方体/三角锥
+            • 单指点击: 展开/折叠<br>
+            • 双指滑动: 旋转<br>
+            • 双指缩放: 放大/缩小<br>
+            • 按钮: 切换形状
         </div>
         <div id="controls">
             <button id="cubeBtn" class="btn active">立方体</button>
             <button id="pyramidBtn" class="btn">三角锥</button>
-            <button id="resetBtn" class="btn">重置视角</button>
+            <button id="resetBtn" class="btn">重置</button>
         </div>
     </div>
 
@@ -82,11 +100,13 @@
         let isUnfolded = false;
         let shapeType = 'cube';
         
-        // 鼠标控制变量
-        let isRightMouseDown = false;
-        let mouseX = 0, mouseY = 0;
+        // 触摸控制变量
+        let touches = [];
+        let lastTouchDistance = 0;
+        let lastTouchCenter = { x: 0, y: 0 };
         let targetRotationX = 0, targetRotationY = 0;
         let currentRotationX = 0, currentRotationY = 0;
+        let lastTapTime = 0;
 
         function init() {
             // 创建场景
@@ -329,52 +349,17 @@
         function addEventListeners() {
             const canvas = renderer.domElement;
 
-            // 鼠标按下事件
-            canvas.addEventListener('mousedown', (event) => {
-                event.preventDefault();
-                
-                if (event.button === 2) { // 右键
-                    isRightMouseDown = true;
-                    mouseX = event.clientX;
-                    mouseY = event.clientY;
-                } else if (event.button === 0) { // 左键
-                    toggleUnfold();
-                }
-            });
+            // 触摸事件
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 
-            // 鼠标移动事件
-            canvas.addEventListener('mousemove', (event) => {
-                if (isRightMouseDown) {
-                    const deltaX = event.clientX - mouseX;
-                    const deltaY = event.clientY - mouseY;
-                    
-                    targetRotationY += deltaX * 0.01;
-                    targetRotationX += deltaY * 0.01;
-                    
-                    mouseX = event.clientX;
-                    mouseY = event.clientY;
-                }
-            });
-
-            // 鼠标抬起事件
-            canvas.addEventListener('mouseup', (event) => {
-                if (event.button === 2) {
-                    isRightMouseDown = false;
-                }
-            });
-
-            // 禁用右键菜单
-            canvas.addEventListener('contextmenu', (event) => {
-                event.preventDefault();
-            });
-
-            // 鼠标滚轮事件
-            canvas.addEventListener('wheel', (event) => {
-                event.preventDefault();
-                const scale = event.deltaY > 0 ? 1.1 : 0.9;
-                camera.position.multiplyScalar(scale);
-                camera.position.clampLength(3, 20);
-            });
+            // 鼠标事件（为桌面兼容性保留）
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            canvas.addEventListener('wheel', handleWheel, { passive: false });
 
             // 形状切换按钮
             document.getElementById('cubeBtn').addEventListener('click', () => {
@@ -406,6 +391,129 @@
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
             });
+        }
+
+        function handleTouchStart(event) {
+            event.preventDefault();
+            touches = Array.from(event.touches);
+            
+            if (touches.length === 1) {
+                // 单指触摸 - 检测双击
+                const currentTime = Date.now();
+                if (currentTime - lastTapTime < 300) {
+                    toggleUnfold();
+                }
+                lastTapTime = currentTime;
+            } else if (touches.length === 2) {
+                // 双指触摸 - 初始化旋转和缩放
+                const touch1 = touches[0];
+                const touch2 = touches[1];
+                
+                lastTouchDistance = Math.sqrt(
+                    Math.pow(touch2.clientX - touch1.clientX, 2) +
+                    Math.pow(touch2.clientY - touch1.clientY, 2)
+                );
+                
+                lastTouchCenter = {
+                    x: (touch1.clientX + touch2.clientX) / 2,
+                    y: (touch1.clientY + touch2.clientY) / 2
+                };
+            }
+        }
+
+        function handleTouchMove(event) {
+            event.preventDefault();
+            
+            if (event.touches.length === 2) {
+                const touch1 = event.touches[0];
+                const touch2 = event.touches[1];
+                
+                // 计算当前距离和中心点
+                const currentDistance = Math.sqrt(
+                    Math.pow(touch2.clientX - touch1.clientX, 2) +
+                    Math.pow(touch2.clientY - touch1.clientY, 2)
+                );
+                
+                const currentCenter = {
+                    x: (touch1.clientX + touch2.clientX) / 2,
+                    y: (touch1.clientY + touch2.clientY) / 2
+                };
+                
+                // 缩放手势
+                if (lastTouchDistance > 0) {
+                    const scale = currentDistance / lastTouchDistance;
+                    const newDistance = camera.position.length() / scale;
+                    camera.position.normalize().multiplyScalar(Math.max(3, Math.min(20, newDistance)));
+                }
+                
+                // 旋转手势
+                const deltaX = currentCenter.x - lastTouchCenter.x;
+                const deltaY = currentCenter.y - lastTouchCenter.y;
+                
+                targetRotationY += deltaX * 0.01;
+                targetRotationX += deltaY * 0.01;
+                
+                lastTouchDistance = currentDistance;
+                lastTouchCenter = currentCenter;
+            }
+        }
+
+        function handleTouchEnd(event) {
+            event.preventDefault();
+            touches = Array.from(event.touches);
+            
+            if (touches.length === 0) {
+                lastTouchDistance = 0;
+            } else if (touches.length === 1) {
+                // 重新初始化单指状态
+                lastTouchDistance = 0;
+            }
+        }
+
+        // 鼠标事件处理（桌面兼容）
+        let isMouseDown = false;
+        let mouseButton = -1;
+
+        function handleMouseDown(event) {
+            event.preventDefault();
+            isMouseDown = true;
+            mouseButton = event.button;
+            
+            if (event.button === 0) { // 左键
+                const currentTime = Date.now();
+                if (currentTime - lastTapTime < 300) {
+                    toggleUnfold();
+                }
+                lastTapTime = currentTime;
+            }
+            
+            lastTouchCenter = { x: event.clientX, y: event.clientY };
+        }
+
+        function handleMouseMove(event) {
+            if (!isMouseDown) return;
+            
+            if (mouseButton === 2 || mouseButton === 0) { // 右键或左键拖拽
+                const deltaX = event.clientX - lastTouchCenter.x;
+                const deltaY = event.clientY - lastTouchCenter.y;
+                
+                targetRotationY += deltaX * 0.01;
+                targetRotationX += deltaY * 0.01;
+                
+                lastTouchCenter = { x: event.clientX, y: event.clientY };
+            }
+        }
+
+        function handleMouseUp(event) {
+            isMouseDown = false;
+            mouseButton = -1;
+        }
+
+        function handleWheel(event) {
+            event.preventDefault();
+            const scale = event.deltaY > 0 ? 1.1 : 0.9;
+            const newDistance = camera.position.length() * scale;
+            camera.position.normalize().multiplyScalar(Math.max(3, Math.min(20, newDistance)));
         }
 
         function toggleUnfold() {
