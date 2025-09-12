@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learn to Read Clock - Fun Game for Kids</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="screen active">
+            <h1 class="title">🕐 Learn Time!</h1>
+            <p class="subtitle">A fun way to learn how to read clocks</p>
+            
+            <div class="mode-buttons">
+                <button id="learning-mode-btn" class="mode-btn learning-btn">
+                    <span class="emoji">📚</span>
+                    <span class="btn-text">Learning Mode</span>
+                    <span class="btn-subtitle">Move the clock hands</span>
+                </button>
+                
+                <button id="test-mode-btn" class="mode-btn test-btn">
+                    <span class="emoji">🎯</span>
+                    <span class="btn-text">Test Mode</span>
+                    <span class="btn-subtitle">Show me the time</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Learning Mode Screen -->
+        <div id="learning-screen" class="screen">
+            <div class="header">
+                <button id="back-to-menu-learning" class="back-btn">← Back</button>
+                <h2>Learning Mode</h2>
+            </div>
+            
+            <div class="time-display">
+                <span id="current-time">12:00</span>
+            </div>
+            
+            <div class="clock-container">
+                <div id="clock" class="clock">
+                    <!-- Clock numbers -->
+                    <div class="number number-12">12</div>
+                    <div class="number number-1">1</div>
+                    <div class="number number-2">2</div>
+                    <div class="number number-3">3</div>
+                    <div class="number number-4">4</div>
+                    <div class="number number-5">5</div>
+                    <div class="number number-6">6</div>
+                    <div class="number number-7">7</div>
+                    <div class="number number-8">8</div>
+                    <div class="number number-9">9</div>
+                    <div class="number number-10">10</div>
+                    <div class="number number-11">11</div>
+                    
+                    <!-- Clock hands -->
+                    <div id="hour-hand" class="hand hour-hand"></div>
+                    <div id="minute-hand" class="hand minute-hand"></div>
+                    <div class="center-dot"></div>
+                </div>
+            </div>
+            
+            <div class="instructions">
+                <p>🖐️ Touch and drag the clock hands to see different times!</p>
+            </div>
+        </div>
+
+        <!-- Test Mode Screen -->
+        <div id="test-screen" class="screen">
+            <div class="header">
+                <button id="back-to-menu-test" class="back-btn">← Back</button>
+                <h2>Test Mode</h2>
+                <div class="score">Score: <span id="score">0</span></div>
+            </div>
+            
+            <div class="question-container">
+                <div class="question">
+                    <p>Show me this time:</p>
+                    <div class="target-time" id="target-time">3:30</div>
+                </div>
+                
+                <div class="clock-container">
+                    <div id="test-clock" class="clock">
+                        <!-- Clock numbers -->
+                        <div class="number number-12">12</div>
+                        <div class="number number-1">1</div>
+                        <div class="number number-2">2</div>
+                        <div class="number number-3">3</div>
+                        <div class="number number-4">4</div>
+                        <div class="number number-5">5</div>
+                        <div class="number number-6">6</div>
+                        <div class="number number-7">7</div>
+                        <div class="number number-8">8</div>
+                        <div class="number number-9">9</div>
+                        <div class="number number-10">10</div>
+                        <div class="number number-11">11</div>
+                        
+                        <!-- Clock hands -->
+                        <div id="test-hour-hand" class="hand hour-hand"></div>
+                        <div id="test-minute-hand" class="hand minute-hand"></div>
+                        <div class="center-dot"></div>
+                    </div>
+                </div>
+                
+                <div class="test-controls">
+                    <button id="check-answer-btn" class="check-btn">Check Answer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback Screen -->
+        <div id="feedback-screen" class="screen">
+            <div class="feedback-content">
+                <div id="feedback-icon" class="feedback-icon">🎉</div>
+                <div id="feedback-text" class="feedback-text">Great job!</div>
+                <div class="feedback-buttons">
+                    <button id="next-question-btn" class="next-btn">Next Question</button>
+                    <button id="back-to-test-btn" class="back-btn">Back to Test</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
