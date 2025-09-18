@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Array Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-group {
+            display: inline-block;
+            margin: 10px 15px;
+        }
+
+        label {
+            font-weight: bold;
+            color: #555;
+            margin-right: 8px;
+        }
+
+        select, input[type="number"], button {
+            padding: 8px 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        select:hover, input[type="number"]:hover {
+            border-color: #764ba2;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+            border: none;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .code-section, .visualization-section {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .code-display {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin-top: 10px;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .keyword {
+            color: #66d9ef;
+            font-weight: bold;
+        }
+
+        .type {
+            color: #a6e22e;
+        }
+
+        .number {
+            color: #ae81ff;
+        }
+
+        .comment {
+            color: #75715e;
+            font-style: italic;
+        }
+
+        .string {
+            color: #e6db74;
+        }
+
+        .highlight-code {
+            background: rgba(255, 255, 0, 0.3);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .array-1d {
+            display: flex;
+            gap: 5px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .array-cell {
+            border: 2px solid #667eea;
+            padding: 15px;
+            min-width: 50px;
+            text-align: center;
+            background: white;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .array-cell.highlighted {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            transform: scale(1.2);
+            z-index: 10;
+            box-shadow: 0 5px 20px rgba(240, 147, 251, 0.5);
+        }
+
+        .array-cell.dimmed {
+            opacity: 0.3;
+            transform: scale(0.95);
+        }
+
+        .array-2d {
+            display: inline-block;
+            margin: 20px 0;
+        }
+
+        .array-row {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+
+        .index-label {
+            font-size: 10px;
+            color: #999;
+            position: absolute;
+            top: -8px;
+            right: 2px;
+        }
+
+        #canvas3d {
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            cursor: grab;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        #canvas3d:active {
+            cursor: grabbing;
+        }
+
+        .iteration-controls {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            border-radius: 10px;
+        }
+
+        .iteration-info {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        h3 {
+            color: #667eea;
+            margin: 15px 0;
+            font-size: 1.3em;
+        }
+
+        .canvas-controls {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .canvas-info {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Java Array Visualizer</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>Array Type:</label>
+                <select id="arrayType">
+                    <option value="1D">1D Array</option>
+                    <option value="2D">2D Array</option>
+                    <option value="3D">3D Array</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>Size (i):</label>
+                <input type="number" id="sizeI" value="5" min="1" max="10">
+            </div>
+            
+            <div class="control-group" id="sizeJGroup" style="display:none;">
+                <label>Size (j):</label>
+                <input type="number" id="sizeJ" value="4" min="1" max="10">
+            </div>
+            
+            <div class="control-group" id="sizeKGroup" style="display:none;">
+                <label>Size (k):</label>
+                <input type="number" id="sizeK" value="3" min="1" max="10">
+            </div>
+            
+            <button id="generateBtn">🔄 Generate New Array</button>
+            
+            <div class="control-group">
+                <label>Access Index (i):</label>
+                <input type="number" id="indexI" value="0" min="0">
+            </div>
+            
+            <div class="control-group" id="indexJGroup" style="display:none;">
+                <label>Index (j):</label>
+                <input type="number" id="indexJ" value="0" min="0">
+            </div>
+            
+            <div class="control-group" id="indexKGroup" style="display:none;">
+                <label>Index (k):</label>
+                <input type="number" id="indexK" value="0" min="0">
+            </div>
+            
+            <button id="accessBtn">🎯 Access Element</button>
+        </div>
+        
+        <div class="main-content">
+            <div class="code-section">
+                <h3>📝 Java Code</h3>
+                <div id="codeDisplay" class="code-display"></div>
+                
+                <div class="iteration-controls">
+                    <div class="iteration-info" id="iterationInfo">Ready to iterate</div>
+                    <button id="resetBtn">↺ Reset</button>
+                    <button id="nextBtn">Next →</button>
+                </div>
+            </div>
+            
+            <div class="visualization-section">
+                <h3>🎨 Visualization</h3>
+                <div id="visualization"></div>
+                <div id="canvasControls" class="canvas-controls" style="display:none;">
+                    <button id="resetViewBtn">🎯 Reset View</button>
+                    <div class="canvas-info">Drag to rotate • Scroll to zoom • [0][0][0] starts at top-left</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentArray = [];
+        let arrayType = '1D';
+        let iterationState = { i: 0, j: 0, k: 0 };
+        let currentlyIterating = false;
+        
+        // 3D visualization variables - default view with [0][0][0] at top-left
+        let rotation = { x: Math.PI / 6, y: -Math.PI / 4 };
+        let zoom = 1;
+        let isDragging = false;
+        let lastMousePos = { x: 0, y: 0 };
+
+        function initArray() {
+            arrayType = document.getElementById('arrayType').value;
+            const sizeI = parseInt(document.getElementById('sizeI').value);
+            const sizeJ = parseInt(document.getElementById('sizeJ').value);
+            const sizeK = parseInt(document.getElementById('sizeK').value);
+            
+            // Show/hide appropriate controls
+            document.getElementById('sizeJGroup').style.display = arrayType !== '1D' ? 'inline-block' : 'none';
+            document.getElementById('sizeKGroup').style.display = arrayType === '3D' ? 'inline-block' : 'none';
+            document.getElementById('indexJGroup').style.display = arrayType !== '1D' ? 'inline-block' : 'none';
+            document.getElementById('indexKGroup').style.display = arrayType === '3D' ? 'inline-block' : 'none';
+            document.getElementById('canvasControls').style.display = arrayType === '3D' ? 'block' : 'none';
+            
+            // Initialize array with random values
+            if (arrayType === '1D') {
+                currentArray = Array(sizeI).fill(0).map(() => Math.floor(Math.random() * 100));
+            } else if (arrayType === '2D') {
+                currentArray = Array(sizeI).fill(0).map(() => 
+                    Array(sizeJ).fill(0).map(() => Math.floor(Math.random() * 100))
+                );
+            } else {
+                currentArray = Array(sizeI).fill(0).map(() => 
+                    Array(sizeJ).fill(0).map(() => 
+                        Array(sizeK).fill(0).map(() => Math.floor(Math.random() * 100))
+                    )
+                );
+            }
+            
+            resetIteration();
+            updateCodeDisplay();
+            visualizeArray();
+        }
+
+        function updateCodeDisplay() {
+            const indexI = parseInt(document.getElementById('indexI').value);
+            const indexJ = parseInt(document.getElementById('indexJ').value);
+            const indexK = parseInt(document.getElementById('indexK').value);
+            
+            let code = '';
+            
+            if (arrayType === '1D') {
+                // Build initializer list
+                let initList = currentArray.map((val, i) => {
+                    if (i === indexI) {
+                        return `<span class="number highlight-code">${val}</span>`;
+                    }
+                    return `<span class="number">${val}</span>`;
+                }).join(', ');
+                
+                code = `<span class="comment">// Create and initialize 1D array with initializer list</span>
+<span class="keyword">int</span>[] <span class="type">array</span> = {${initList}};`;
+            } else if (arrayType === '2D') {
+                // Build 2D initializer list
+                let initList = currentArray.map((row, i) => {
+                    let rowStr = row.map((val, j) => {
+                        if (i === indexI && j === indexJ) {
+                            return `<span class="number highlight-code">${val}</span>`;
+                        }
+                        return `<span class="number">${val}</span>`;
+                    }).join(', ');
+                    return `    {${rowStr}}`;
+                }).join(',\n');
+                
+                code = `<span class="comment">// Create and initialize 2D array with initializer list</span>
+<span class="keyword">int</span>[][] <span class="type">array</span> = {
+${initList}
+};`;
+            } else {
+                // Build 3D initializer list (compact format for space)
+                let initList = currentArray.map((plane, i) => {
+                    let planeStr = plane.map((row, j) => {
+                        let rowStr = row.map((val, k) => {
+                            if (i === indexI && j === indexJ && k === indexK) {
+                                return `<span class="number highlight-code">${val}</span>`;
+                            }
+                            return `<span class="number">${val}</span>`;
+                        }).join(', ');
+                        return `        {${rowStr}}`;
+                    }).join(',\n');
+                    return `    { <span class="comment">// plane [${i}]</span>\n${planeStr}\n    }`;
+                }).join(',\n');
+                
+                code = `<span class="comment">// Create and initialize 3D array with initializer list</span>
+<span class="keyword">int</span>[][][] <span class="type">array</span> = {
+${initList}
+};`;
+            }
+            
+            document.getElementById('codeDisplay').innerHTML = code;
+        }
+
+        function visualizeArray() {
+            const viz = document.getElementById('visualization');
+            
+            if (arrayType === '1D') {
+                let html = '<div class="array-1d">';
+                currentArray.forEach((val, i) => {
+                    html += `<div class="array-cell" data-index="${i}">
+                        <span class="index-label">[${i}]</span>
+                        ${val}
+                    </div>`;
+                });
+                html += '</div>';
+                viz.innerHTML = html;
+            } else if (arrayType === '2D') {
+                let html = '<div class="array-2d">';
+                currentArray.forEach((row, i) => {
+                    html += '<div class="array-row">';
+                    row.forEach((val, j) => {
+                        html += `<div class="array-cell" data-i="${i}" data-j="${j}">
+                            <span class="index-label">[${i}][${j}]</span>
+                            ${val}
+                        </div>`;
+                    });
+                    html += '</div>';
+                });
+                html += '</div>';
+                viz.innerHTML = html;
+            } else {
+                viz.innerHTML = '<canvas id="canvas3d" width="600" height="400"></canvas>';
+                setup3DCanvas();
+                draw3DArray();
+            }
+        }
+        
+        function setup3DCanvas() {
+            const canvas = document.getElementById('canvas3d');
+            if (!canvas) return;
+            
+            // Mouse drag for rotation
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+                canvas.style.cursor = 'grabbing';
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - lastMousePos.x;
+                const deltaY = e.clientY - lastMousePos.y;
+                
+                rotation.y += deltaX * 0.01;
+                rotation.x -= deltaY * 0.01;
+                
+                // Limit vertical rotation to prevent flipping
+                rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotation.x));
+                
+                lastMousePos = { x: e.clientX, y: e.clientY };
+                draw3DArray();
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+            });
+            
+            canvas.addEventListener('mouseleave', () => {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+            });
+            
+            // Mouse wheel for zoom
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                zoom *= e.deltaY > 0 ? 0.9 : 1.1;
+                zoom = Math.max(0.5, Math.min(3, zoom));
+                draw3DArray();
+            });
+        }
+
+        function setup3DCanvas() {
+            const canvas = document.getElementById('canvas3d');
+            if (!canvas) return;
+            
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+                canvas.style.cursor = 'grabbing';
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - lastMousePos.x;
+                const deltaY = e.clientY - lastMousePos.y;
+                
+                rotation.y += deltaX * 0.01;
+                rotation.x -= deltaY * 0.01;
+                
+                lastMousePos = { x: e.clientX, y: e.clientY };
+                draw3DArray();
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+            });
+            
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                zoom *= e.deltaY > 0 ? 0.9 : 1.1;
+                zoom = Math.max(0.5, Math.min(3, zoom));
+                draw3DArray();
+            });
+        }
+
+                
+        function draw3DArray() {
+            const canvas = document.getElementById('canvas3d');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const cellSize = 40 * zoom;
+            const gap = 15 * zoom; // Gap between cubes
+            
+            const indexI = parseInt(document.getElementById('indexI').value);
+            const indexJ = parseInt(document.getElementById('indexJ').value);
+            const indexK = parseInt(document.getElementById('indexK').value);
+            
+            // Check if we're highlighting a specific element
+            const hasHighlight = indexI < currentArray.length && 
+                                indexJ < currentArray[0].length && 
+                                indexK < currentArray[0][0].length &&
+                                indexI >= 0 && indexJ >= 0 && indexK >= 0;
+            
+            // Calculate positions for all cubes
+            // Adjust positioning so [0][0][0] is at top-left-front
+            let cubes = [];
+            for (let i = 0; i < currentArray.length; i++) {
+                for (let j = 0; j < currentArray[i].length; j++) {
+                    for (let k = 0; k < currentArray[i][j].length; k++) {
+                        // Position cubes with [0][0][0] at origin
+                        const x = k * (cellSize + gap);
+                        const y = j * (cellSize + gap);
+                        const z = i * (cellSize + gap);
+                        
+                        const isHighlighted = hasHighlight && (i === indexI && j === indexJ && k === indexK);
+                        const isCurrentIteration = currentlyIterating && (i === iterationState.i && j === iterationState.j && k === iterationState.k);
+                        
+                        // Check if cube is on the outer surface
+                        const isOuter = i === 0 || i === currentArray.length - 1 ||
+                                      j === 0 || j === currentArray[i].length - 1 ||
+                                      k === 0 || k === currentArray[i][j].length - 1;
+                        
+                        // Calculate 3D position for each vertex of the cube
+                        const vertices = calculate3DVertices(x, y, z, cellSize, rotation);
+                        
+                        cubes.push({
+                            vertices,
+                            x, y, z,
+                            value: currentArray[i][j][k],
+                            i, j, k,
+                            isHighlighted,
+                            isCurrentIteration,
+                            isOuter
+                        });
+                    }
+                }
+            }
+            
+            // Sort by average z-depth (back to front)
+            cubes.sort((a, b) => {
+                const avgZA = (a.vertices[0].z + a.vertices[6].z) / 2;
+                const avgZB = (b.vertices[0].z + b.vertices[6].z) / 2;
+                return avgZA - avgZB;
+            });
+            
+            // Draw cubes
+            cubes.forEach(cube => {
+                // Calculate visibility and opacity
+                let alpha = 1;
+                let showValue = false;
+                
+                if (cube.isHighlighted || cube.isCurrentIteration) {
+                    // Highlighted cube is fully visible
+                    alpha = 1;
+                    showValue = true;
+                } else if (hasHighlight || currentlyIterating) {
+                    // When something is highlighted, dim other cubes
+                    alpha = 0.15;
+                    showValue = false;
+                } else {
+                    // Normal state - show outer cubes solid, inner cubes hidden
+                    if (cube.isOuter) {
+                        alpha = 1;
+                        showValue = true;
+                    } else {
+                        // Don't draw inner cubes when not highlighting
+                        return;
+                    }
+                }
+                
+                // Determine color based on state
+                let baseColor = '#667eea';
+                if (cube.isHighlighted) {
+                    baseColor = '#f5576c';
+                } else if (cube.isCurrentIteration) {
+                    baseColor = '#ffc107';
+                }
+                
+                // Draw the complete 3D cube
+                drawFullCube(ctx, cube.vertices, centerX, centerY, baseColor, alpha, cube.value, showValue, `[${cube.i}][${cube.j}][${cube.k}]`);
+            });
+        }
+        
+        function calculate3DVertices(x, y, z, size, rotation) {
+            const halfSize = size / 2;
+            
+            // Define the 8 vertices of a cube
+            const vertices = [
+                { x: x - halfSize, y: y - halfSize, z: z - halfSize }, // 0: front-top-left
+                { x: x + halfSize, y: y - halfSize, z: z - halfSize }, // 1: front-top-right
+                { x: x + halfSize, y: y + halfSize, z: z - halfSize }, // 2: front-bottom-right
+                { x: x - halfSize, y: y + halfSize, z: z - halfSize }, // 3: front-bottom-left
+                { x: x - halfSize, y: y - halfSize, z: z + halfSize }, // 4: back-top-left
+                { x: x + halfSize, y: y - halfSize, z: z + halfSize }, // 5: back-top-right
+                { x: x + halfSize, y: y + halfSize, z: z + halfSize }, // 6: back-bottom-right
+                { x: x - halfSize, y: y + halfSize, z: z + halfSize }, // 7: back-bottom-left
+            ];
+            
+            // Apply rotation to each vertex
+            return vertices.map(v => {
+                // Rotate around Y axis
+                const rotX = v.x * Math.cos(rotation.y) - v.z * Math.sin(rotation.y);
+                const rotZ = v.x * Math.sin(rotation.y) + v.z * Math.cos(rotation.y);
+                
+                // Rotate around X axis
+                const rotY = v.y * Math.cos(rotation.x) - rotZ * Math.sin(rotation.x);
+                const finalZ = v.y * Math.sin(rotation.x) + rotZ * Math.cos(rotation.x);
+                
+                return { x: rotX, y: rotY, z: finalZ };
+            });
+        }
+        
+        function drawFullCube(ctx, vertices, centerX, centerY, color, alpha, value, showValue, indices) {
+            // Project 3D coordinates to 2D with centering offset
+            // Offset to center the entire cube array in the canvas
+            const offsetX = -150 * zoom;
+            const offsetY = -50 * zoom;
+            
+            const projected = vertices.map(v => ({
+                x: centerX + v.x + offsetX,
+                y: centerY + v.y + offsetY,
+                z: v.z
+            }));
+            
+            // Convert hex color to RGB
+            const r = parseInt(color.slice(1, 3), 16);
+            const g = parseInt(color.slice(3, 5), 16);
+            const b = parseInt(color.slice(5, 7), 16);
+            
+            // Define faces with their vertex indices and normal direction for shading
+            const faces = [
+                { indices: [4, 5, 6, 7], shade: 0.3 },  // back (darkest)
+                { indices: [0, 4, 7, 3], shade: 0.5 },  // left
+                { indices: [1, 2, 6, 5], shade: 0.7 },  // right
+                { indices: [3, 7, 6, 2], shade: 0.6 },  // bottom
+                { indices: [0, 1, 5, 4], shade: 1.2 },  // top (brightest)
+                { indices: [0, 3, 2, 1], shade: 1.0 },  // front
+            ];
+            
+            // Calculate face depths for sorting
+            const facesWithDepth = faces.map(face => {
+                const avgZ = face.indices.reduce((sum, idx) => sum + projected[idx].z, 0) / face.indices.length;
+                return { ...face, avgZ };
+            });
+            
+            // Sort faces by depth (back to front)
+            facesWithDepth.sort((a, b) => a.avgZ - b.avgZ);
+            
+            // Draw each face
+            facesWithDepth.forEach(face => {
+                const faceShade = face.shade;
+                
+                // Calculate face color with shading
+                const faceR = Math.min(255, r * faceShade);
+                const faceG = Math.min(255, g * faceShade);
+                const faceB = Math.min(255, b * faceShade);
+                
+                // Draw face
+                ctx.fillStyle = `rgba(${faceR}, ${faceG}, ${faceB}, ${alpha})`;
+                ctx.beginPath();
+                ctx.moveTo(projected[face.indices[0]].x, projected[face.indices[0]].y);
+                for (let i = 1; i < face.indices.length; i++) {
+                    ctx.lineTo(projected[face.indices[i]].x, projected[face.indices[i]].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                
+                // Draw face outline
+                ctx.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.3})`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+            
+            // Draw edges for better definition (only for highlighted cubes)
+            if (alpha > 0.5) {
+                ctx.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.5})`;
+                ctx.lineWidth = 2;
+                
+                // Draw all 12 edges
+                const edges = [
+                    [0, 1], [1, 2], [2, 3], [3, 0], // front face
+                    [4, 5], [5, 6], [6, 7], [7, 4], // back face
+                    [0, 4], [1, 5], [2, 6], [3, 7]  // connecting edges
+                ];
+                
+                edges.forEach(edge => {
+                    ctx.beginPath();
+                    ctx.moveTo(projected[edge[0]].x, projected[edge[0]].y);
+                    ctx.lineTo(projected[edge[1]].x, projected[edge[1]].y);
+                    ctx.stroke();
+                });
+            }
+            
+            // Draw value on the front face if visible
+            if (showValue) {
+                // Calculate center of front face
+                const frontCenterX = (projected[0].x + projected[1].x + projected[2].x + projected[3].x) / 4;
+                const frontCenterY = (projected[0].y + projected[1].y + projected[2].y + projected[3].y) / 4;
+                
+                // Add shadow for better readability
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+                
+                ctx.fillStyle = 'white';
+                ctx.font = `bold ${16 * zoom}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(value, frontCenterX, frontCenterY);
+                
+                // Reset shadow
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                
+                // Draw indices above the cube
+                const topCenterX = (projected[0].x + projected[1].x + projected[4].x + projected[5].x) / 4;
+                const topCenterY = Math.min(projected[0].y, projected[1].y, projected[4].y, projected[5].y) - 10;
+                
+                ctx.fillStyle = `rgba(100, 100, 100, ${alpha})`;
+                ctx.font = `${10 * zoom}px Arial`;
+                ctx.fillText(indices, topCenterX, topCenterY);
+            }
+        }
+
+        function highlightElement() {
+            const indexI = parseInt(document.getElementById('indexI').value);
+            const indexJ = parseInt(document.getElementById('indexJ').value);
+            const indexK = parseInt(document.getElementById('indexK').value);
+            
+            // Clear iteration state when manually accessing elements
+            currentlyIterating = false;
+            
+            if (arrayType === '1D') {
+                if (indexI >= currentArray.length || indexI < 0) {
+                    alert('Index out of bounds!');
+                    return;
+                }
+                
+                const cells = document.querySelectorAll('.array-cell');
+                cells.forEach((cell, i) => {
+                    cell.classList.remove('highlighted', 'dimmed');
+                    if (i === indexI) {
+                        cell.classList.add('highlighted');
+                    } else {
+                        cell.classList.add('dimmed');
+                    }
+                });
+            } else if (arrayType === '2D') {
+                if (indexI >= currentArray.length || indexI < 0 || indexJ >= currentArray[0].length || indexJ < 0) {
+                    alert('Index out of bounds!');
+                    return;
+                }
+                
+                const cells = document.querySelectorAll('.array-cell');
+                cells.forEach(cell => {
+                    const i = parseInt(cell.dataset.i);
+                    const j = parseInt(cell.dataset.j);
+                    cell.classList.remove('highlighted', 'dimmed');
+                    if (i === indexI && j === indexJ) {
+                        cell.classList.add('highlighted');
+                    } else {
+                        cell.classList.add('dimmed');
+                    }
+                });
+            } else {
+                if (indexI >= currentArray.length || indexI < 0 || 
+                    indexJ >= currentArray[0].length || indexJ < 0 || 
+                    indexK >= currentArray[0][0].length || indexK < 0) {
+                    alert('Index out of bounds!');
+                    return;
+                }
+                
+                draw3DArray();
+            }
+            
+            updateCodeDisplay();
+        }
+
+        function resetIteration() {
+            iterationState = { i: 0, j: 0, k: 0 };
+            currentlyIterating = false;
+            document.getElementById('iterationInfo').textContent = 'Ready to iterate';
+            document.getElementById('nextBtn').disabled = false;
+            
+            // Remove all highlighting
+            const cells = document.querySelectorAll('.array-cell');
+            cells.forEach(cell => {
+                cell.classList.remove('highlighted', 'dimmed');
+            });
+            
+            if (arrayType === '3D') {
+                draw3DArray();
+            }
+        }
+
+        function iterateNext() {
+            currentlyIterating = true;
+            
+            // Clear any element access highlighting
+            document.getElementById('indexI').value = -1;
+            document.getElementById('indexJ').value = -1;
+            document.getElementById('indexK').value = -1;
+            
+            if (arrayType === '1D') {
+                if (iterationState.i >= currentArray.length) {
+                    document.getElementById('iterationInfo').textContent = 'Iteration complete!';
+                    document.getElementById('nextBtn').disabled = true;
+                    return;
+                }
+                
+                const value = currentArray[iterationState.i];
+                document.getElementById('iterationInfo').textContent = `Current: array[${iterationState.i}] = ${value}`;
+                
+                // Highlight current element
+                const cells = document.querySelectorAll('.array-cell');
+                cells.forEach((cell, index) => {
+                    cell.classList.remove('highlighted', 'dimmed');
+                    if (index === iterationState.i) {
+                        cell.classList.add('highlighted');
+                    } else {
+                        cell.classList.add('dimmed');
+                    }
+                });
+                
+                iterationState.i++;
+            } else if (arrayType === '2D') {
+                if (iterationState.i >= currentArray.length) {
+                    document.getElementById('iterationInfo').textContent = 'Iteration complete!';
+                    document.getElementById('nextBtn').disabled = true;
+                    return;
+                }
+                
+                if (iterationState.j >= currentArray[iterationState.i].length) {
+                    iterationState.i++;
+                    iterationState.j = 0;
+                    if (iterationState.i >= currentArray.length) {
+                        document.getElementById('iterationInfo').textContent = 'Iteration complete!';
+                        document.getElementById('nextBtn').disabled = true;
+                        return;
+                    }
+                }
+                
+                const value = currentArray[iterationState.i][iterationState.j];
+                document.getElementById('iterationInfo').textContent = `Current: array[${iterationState.i}][${iterationState.j}] = ${value}`;
+                
+                // Highlight current element
+                const cells = document.querySelectorAll('.array-cell');
+                cells.forEach(cell => {
+                    const i = parseInt(cell.dataset.i);
+                    const j = parseInt(cell.dataset.j);
+                    cell.classList.remove('highlighted', 'dimmed');
+                    if (i === iterationState.i && j === iterationState.j) {
+                        cell.classList.add('highlighted');
+                    } else {
+                        cell.classList.add('dimmed');
+                    }
+                });
+                
+                iterationState.j++;
+            } else {
+                if (iterationState.i >= currentArray.length) {
+                    document.getElementById('iterationInfo').textContent = 'Iteration complete!';
+                    document.getElementById('nextBtn').disabled = true;
+                    return;
+                }
+                
+                if (iterationState.k >= currentArray[iterationState.i][iterationState.j].length) {
+                    iterationState.j++;
+                    iterationState.k = 0;
+                    if (iterationState.j >= currentArray[iterationState.i].length) {
+                        iterationState.i++;
+                        iterationState.j = 0;
+                        if (iterationState.i >= currentArray.length) {
+                            document.getElementById('iterationInfo').textContent = 'Iteration complete!';
+                            document.getElementById('nextBtn').disabled = true;
+                            return;
+                        }
+                    }
+                }
+                
+                const value = currentArray[iterationState.i][iterationState.j][iterationState.k];
+                document.getElementById('iterationInfo').textContent = `Current: array[${iterationState.i}][${iterationState.j}][${iterationState.k}] = ${value}`;
+                
+                draw3DArray();
+                iterationState.k++;
+            }
+        }
+
+        function resetView() {
+            // Reset to default view with [0][0][0] at top-left
+            rotation = { x: Math.PI / 6, y: -Math.PI / 4 };
+            zoom = 1;
+            draw3DArray();
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Add event listeners
+            document.getElementById('arrayType').addEventListener('change', initArray);
+            document.getElementById('sizeI').addEventListener('change', initArray);
+            document.getElementById('sizeJ').addEventListener('change', initArray);
+            document.getElementById('sizeK').addEventListener('change', initArray);
+            document.getElementById('generateBtn').addEventListener('click', initArray);
+            
+            document.getElementById('indexI').addEventListener('change', highlightElement);
+            document.getElementById('indexJ').addEventListener('change', highlightElement);
+            document.getElementById('indexK').addEventListener('change', highlightElement);
+            document.getElementById('accessBtn').addEventListener('click', highlightElement);
+            
+            document.getElementById('resetBtn').addEventListener('click', resetIteration);
+            document.getElementById('nextBtn').addEventListener('click', iterateNext);
+            document.getElementById('resetViewBtn').addEventListener('click', resetView);
+            
+            // Initialize array
+            initArray();
+        });
+    </script>
+</body>
+</html>
