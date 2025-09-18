@@ -376,7 +376,7 @@
                     return `<span class="number">${val}</span>`;
                 }).join(', ');
                 
-                code = `<span class="comment">// Create and initialize 1D array with initializer list</span>
+                code = `
 <span class="keyword">int</span>[] <span class="type">array</span> = {${initList}};`;
             } else if (arrayType === '2D') {
                 // Build 2D initializer list
@@ -390,7 +390,7 @@
                     return `    {${rowStr}}`;
                 }).join(',\n');
                 
-                code = `<span class="comment">// Create and initialize 2D array with initializer list</span>
+                code = `<span class="comment">
 <span class="keyword">int</span>[][] <span class="type">array</span> = {
 ${initList}
 };`;
@@ -406,10 +406,10 @@ ${initList}
                         }).join(', ');
                         return `        {${rowStr}}`;
                     }).join(',\n');
-                    return `    { <span class="comment">// plane [${i}]</span>\n${planeStr}\n    }`;
+                    return `    {${planeStr}\n    }`;
                 }).join(',\n');
                 
-                code = `<span class="comment">// Create and initialize 3D array with initializer list</span>
+                code = `<span class="comment">
 <span class="keyword">int</span>[][][] <span class="type">array</span> = {
 ${initList}
 };`;
