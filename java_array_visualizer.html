@@ -36,6 +36,22 @@
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
         }
 
+        .logo-icon {
+            display: inline-block;
+            font-size: 1.2em;
+            filter: drop-shadow(0 0 8px rgba(245, 87, 108, 0.6));
+            animation: subtle-glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes subtle-glow {
+            0% {
+                filter: drop-shadow(0 0 8px rgba(245, 87, 108, 0.4));
+            }
+            100% {
+                filter: drop-shadow(0 0 12px rgba(245, 87, 108, 0.8));
+            }
+        }
+
         .controls {
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             padding: 20px;
@@ -106,8 +122,8 @@
         }
 
         .code-display {
-            background: #2d2d2d;
-            color: #f8f8f2;
+            background: #f8f9fa;
+            color: #333;
             padding: 20px;
             border-radius: 10px;
             font-family: 'Courier New', monospace;
@@ -115,33 +131,35 @@
             line-height: 1.6;
             overflow-x: auto;
             margin-top: 10px;
-            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid #dee2e6;
+            white-space: pre;
         }
 
         .keyword {
-            color: #66d9ef;
+            color: #0066cc;
             font-weight: bold;
         }
 
         .type {
-            color: #a6e22e;
+            color: #008000;
         }
 
         .number {
-            color: #ae81ff;
+            color: #8b00ff;
         }
 
         .comment {
-            color: #75715e;
+            color: #666666;
             font-style: italic;
         }
 
         .string {
-            color: #e6db74;
+            color: #b8860b;
         }
 
         .highlight-code {
-            background: rgba(255, 255, 0, 0.3);
+            background: rgba(255, 235, 59, 0.4);
             padding: 2px 4px;
             border-radius: 3px;
         }
@@ -209,20 +227,6 @@
             cursor: grabbing;
         }
 
-        .iteration-controls {
-            text-align: center;
-            margin: 20px 0;
-            padding: 15px;
-            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-            border-radius: 10px;
-        }
-
-        .iteration-info {
-            font-size: 18px;
-            color: #555;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
 
         h3 {
             color: #667eea;
@@ -245,7 +249,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎯 Java Array Visualizer</h1>
+        <h1><span class="logo-icon">🧊</span> Java Array Visualizer</h1>
         
         <div class="controls">
             <div class="control-group">
@@ -271,25 +275,24 @@
                 <label>Size (k):</label>
                 <input type="number" id="sizeK" value="3" min="1" max="10">
             </div>
-            
-            <button id="generateBtn">🔄 Generate New Array</button>
-            
+
+            <br>
+
             <div class="control-group">
                 <label>Access Index (i):</label>
                 <input type="number" id="indexI" value="0" min="0">
             </div>
-            
+
             <div class="control-group" id="indexJGroup" style="display:none;">
                 <label>Index (j):</label>
                 <input type="number" id="indexJ" value="0" min="0">
             </div>
-            
+
             <div class="control-group" id="indexKGroup" style="display:none;">
                 <label>Index (k):</label>
                 <input type="number" id="indexK" value="0" min="0">
             </div>
             
-            <button id="accessBtn">🎯 Access Element</button>
         </div>
         
         <div class="main-content">
@@ -297,11 +300,6 @@
                 <h3>📝 Java Code</h3>
                 <div id="codeDisplay" class="code-display"></div>
                 
-                <div class="iteration-controls">
-                    <div class="iteration-info" id="iterationInfo">Ready to iterate</div>
-                    <button id="resetBtn">↺ Reset</button>
-                    <button id="nextBtn">Next →</button>
-                </div>
             </div>
             
             <div class="visualization-section">
@@ -318,8 +316,6 @@
     <script>
         let currentArray = [];
         let arrayType = '1D';
-        let iterationState = { i: 0, j: 0, k: 0 };
-        let currentlyIterating = false;
         
         // 3D visualization variables - default view with [0][0][0] at top-left
         let rotation = { x: Math.PI / 6, y: -Math.PI / 4 };
@@ -355,9 +351,89 @@
                 );
             }
             
-            resetIteration();
+            updateIndexBounds();
             updateCodeDisplay();
             visualizeArray();
+            highlightElement();
+        }
+
+        function updateIndexBounds() {
+            const sizeI = parseInt(document.getElementById('sizeI').value);
+            const sizeJ = parseInt(document.getElementById('sizeJ').value);
+            const sizeK = parseInt(document.getElementById('sizeK').value);
+
+            // Update max attributes for index inputs based on array size
+            const indexIInput = document.getElementById('indexI');
+            indexIInput.max = Math.max(0, sizeI - 1);
+
+            if (arrayType !== '1D') {
+                const indexJInput = document.getElementById('indexJ');
+                indexJInput.max = Math.max(0, sizeJ - 1);
+            }
+
+            if (arrayType === '3D') {
+                const indexKInput = document.getElementById('indexK');
+                indexKInput.max = Math.max(0, sizeK - 1);
+            }
+
+            // Clamp current values to valid range
+            clampIndexValues();
+        }
+
+        function clampIndexValues() {
+            const indexIInput = document.getElementById('indexI');
+            const indexJInput = document.getElementById('indexJ');
+            const indexKInput = document.getElementById('indexK');
+
+            // Clamp indexI
+            let currentI = parseInt(indexIInput.value);
+            const maxI = parseInt(indexIInput.max);
+            if (isNaN(currentI) || currentI < 0) currentI = 0;
+            if (currentI > maxI) currentI = maxI;
+            indexIInput.value = currentI;
+
+            // Clamp indexJ if applicable
+            if (arrayType !== '1D') {
+                let currentJ = parseInt(indexJInput.value);
+                const maxJ = parseInt(indexJInput.max);
+                if (isNaN(currentJ) || currentJ < 0) currentJ = 0;
+                if (currentJ > maxJ) currentJ = maxJ;
+                indexJInput.value = currentJ;
+            }
+
+            // Clamp indexK if applicable
+            if (arrayType === '3D') {
+                let currentK = parseInt(indexKInput.value);
+                const maxK = parseInt(indexKInput.max);
+                if (isNaN(currentK) || currentK < 0) currentK = 0;
+                if (currentK > maxK) currentK = maxK;
+                indexKInput.value = currentK;
+            }
+        }
+
+        function onIndexInput(event) {
+            // Real-time validation as user types
+            const input = event.target;
+            let value = parseInt(input.value);
+            const min = parseInt(input.min) || 0;
+            const max = parseInt(input.max) || 0;
+
+            if (isNaN(value)) return;
+
+            if (value < min) {
+                input.value = min;
+            } else if (value > max) {
+                input.value = max;
+            }
+
+            // Automatically highlight as user types
+            highlightElement();
+        }
+
+        function onIndexChange(event) {
+            // Validate and update visualization when input changes
+            clampIndexValues();
+            highlightElement();
         }
 
         function updateCodeDisplay() {
@@ -389,13 +465,12 @@
                     }).join(', ');
                     return `    {${rowStr}}`;
                 }).join(',\n');
-                
-                code = `<span class="comment">
-<span class="keyword">int</span>[][] <span class="type">array</span> = {
+
+                code = `<span class="keyword">int</span>[][] <span class="type">array</span> = {
 ${initList}
 };`;
             } else {
-                // Build 3D initializer list (compact format for space)
+                // Build 3D initializer list with proper formatting
                 let initList = currentArray.map((plane, i) => {
                     let planeStr = plane.map((row, j) => {
                         let rowStr = row.map((val, k) => {
@@ -406,11 +481,10 @@ ${initList}
                         }).join(', ');
                         return `        {${rowStr}}`;
                     }).join(',\n');
-                    return `    {${planeStr}\n    }`;
+                    return `    {\n${planeStr}\n    }`;
                 }).join(',\n');
-                
-                code = `<span class="comment">
-<span class="keyword">int</span>[][][] <span class="type">array</span> = {
+
+                code = `<span class="keyword">int</span>[][][] <span class="type">array</span> = {
 ${initList}
 };`;
             }
@@ -535,6 +609,7 @@ ${initList}
         }
 
                 
+
         function draw3DArray() {
             const canvas = document.getElementById('canvas3d');
             if (!canvas) return;
@@ -552,11 +627,11 @@ ${initList}
             const indexK = parseInt(document.getElementById('indexK').value);
             
             // Check if we're highlighting a specific element
-            const hasHighlight = indexI < currentArray.length && 
-                                indexJ < currentArray[0].length && 
+            const hasHighlight = indexI < currentArray.length &&
+                                indexJ < currentArray[0].length &&
                                 indexK < currentArray[0][0].length &&
                                 indexI >= 0 && indexJ >= 0 && indexK >= 0;
-            
+
             // Calculate positions for all cubes
             // Adjust positioning so [0][0][0] is at top-left-front
             let cubes = [];
@@ -567,33 +642,36 @@ ${initList}
                         const x = k * (cellSize + gap);
                         const y = j * (cellSize + gap);
                         const z = i * (cellSize + gap);
-                        
+
                         const isHighlighted = hasHighlight && (i === indexI && j === indexJ && k === indexK);
-                        const isCurrentIteration = currentlyIterating && (i === iterationState.i && j === iterationState.j && k === iterationState.k);
-                        
+
                         // Check if cube is on the outer surface
                         const isOuter = i === 0 || i === currentArray.length - 1 ||
                                       j === 0 || j === currentArray[i].length - 1 ||
                                       k === 0 || k === currentArray[i][j].length - 1;
-                        
+
                         // Calculate 3D position for each vertex of the cube
                         const vertices = calculate3DVertices(x, y, z, cellSize, rotation);
-                        
+
                         cubes.push({
                             vertices,
                             x, y, z,
                             value: currentArray[i][j][k],
                             i, j, k,
                             isHighlighted,
-                            isCurrentIteration,
                             isOuter
                         });
                     }
                 }
             }
             
-            // Sort by average z-depth (back to front)
+            // Sort by depth, but always draw highlighted cubes last (on top)
             cubes.sort((a, b) => {
+                // Highlighted cubes always come last
+                if (a.isHighlighted && !b.isHighlighted) return 1;
+                if (!a.isHighlighted && b.isHighlighted) return -1;
+
+                // Otherwise sort by z-depth (back to front)
                 const avgZA = (a.vertices[0].z + a.vertices[6].z) / 2;
                 const avgZB = (b.vertices[0].z + b.vertices[6].z) / 2;
                 return avgZA - avgZB;
@@ -604,34 +682,32 @@ ${initList}
                 // Calculate visibility and opacity
                 let alpha = 1;
                 let showValue = false;
-                
-                if (cube.isHighlighted || cube.isCurrentIteration) {
+
+                if (cube.isHighlighted) {
                     // Highlighted cube is fully visible
                     alpha = 1;
                     showValue = true;
-                } else if (hasHighlight || currentlyIterating) {
-                    // When something is highlighted, dim other cubes
+                } else if (hasHighlight) {
+                    // When something is highlighted, make other cubes very transparent
                     alpha = 0.15;
                     showValue = false;
                 } else {
-                    // Normal state - show outer cubes solid, inner cubes hidden
+                    // Normal state - show outer cubes solid, inner cubes semi-transparent
                     if (cube.isOuter) {
                         alpha = 1;
                         showValue = true;
                     } else {
-                        // Don't draw inner cubes when not highlighting
-                        return;
+                        alpha = 0.2;
+                        showValue = false;
                     }
                 }
-                
+
                 // Determine color based on state
                 let baseColor = '#667eea';
                 if (cube.isHighlighted) {
                     baseColor = '#f5576c';
-                } else if (cube.isCurrentIteration) {
-                    baseColor = '#ffc107';
                 }
-                
+
                 // Draw the complete 3D cube
                 drawFullCube(ctx, cube.vertices, centerX, centerY, baseColor, alpha, cube.value, showValue, `[${cube.i}][${cube.j}][${cube.k}]`);
             });
@@ -785,16 +861,8 @@ ${initList}
             const indexI = parseInt(document.getElementById('indexI').value);
             const indexJ = parseInt(document.getElementById('indexJ').value);
             const indexK = parseInt(document.getElementById('indexK').value);
-            
-            // Clear iteration state when manually accessing elements
-            currentlyIterating = false;
-            
+
             if (arrayType === '1D') {
-                if (indexI >= currentArray.length || indexI < 0) {
-                    alert('Index out of bounds!');
-                    return;
-                }
-                
                 const cells = document.querySelectorAll('.array-cell');
                 cells.forEach((cell, i) => {
                     cell.classList.remove('highlighted', 'dimmed');
@@ -805,11 +873,6 @@ ${initList}
                     }
                 });
             } else if (arrayType === '2D') {
-                if (indexI >= currentArray.length || indexI < 0 || indexJ >= currentArray[0].length || indexJ < 0) {
-                    alert('Index out of bounds!');
-                    return;
-                }
-                
                 const cells = document.querySelectorAll('.array-cell');
                 cells.forEach(cell => {
                     const i = parseInt(cell.dataset.i);
@@ -822,128 +885,12 @@ ${initList}
                     }
                 });
             } else {
-                if (indexI >= currentArray.length || indexI < 0 || 
-                    indexJ >= currentArray[0].length || indexJ < 0 || 
-                    indexK >= currentArray[0][0].length || indexK < 0) {
-                    alert('Index out of bounds!');
-                    return;
-                }
-                
                 draw3DArray();
             }
-            
+
             updateCodeDisplay();
         }
 
-        function resetIteration() {
-            iterationState = { i: 0, j: 0, k: 0 };
-            currentlyIterating = false;
-            document.getElementById('iterationInfo').textContent = 'Ready to iterate';
-            document.getElementById('nextBtn').disabled = false;
-            
-            // Remove all highlighting
-            const cells = document.querySelectorAll('.array-cell');
-            cells.forEach(cell => {
-                cell.classList.remove('highlighted', 'dimmed');
-            });
-            
-            if (arrayType === '3D') {
-                draw3DArray();
-            }
-        }
-
-        function iterateNext() {
-            currentlyIterating = true;
-            
-            // Clear any element access highlighting
-            document.getElementById('indexI').value = -1;
-            document.getElementById('indexJ').value = -1;
-            document.getElementById('indexK').value = -1;
-            
-            if (arrayType === '1D') {
-                if (iterationState.i >= currentArray.length) {
-                    document.getElementById('iterationInfo').textContent = 'Iteration complete!';
-                    document.getElementById('nextBtn').disabled = true;
-                    return;
-                }
-                
-                const value = currentArray[iterationState.i];
-                document.getElementById('iterationInfo').textContent = `Current: array[${iterationState.i}] = ${value}`;
-                
-                // Highlight current element
-                const cells = document.querySelectorAll('.array-cell');
-                cells.forEach((cell, index) => {
-                    cell.classList.remove('highlighted', 'dimmed');
-                    if (index === iterationState.i) {
-                        cell.classList.add('highlighted');
-                    } else {
-                        cell.classList.add('dimmed');
-                    }
-                });
-                
-                iterationState.i++;
-            } else if (arrayType === '2D') {
-                if (iterationState.i >= currentArray.length) {
-                    document.getElementById('iterationInfo').textContent = 'Iteration complete!';
-                    document.getElementById('nextBtn').disabled = true;
-                    return;
-                }
-                
-                if (iterationState.j >= currentArray[iterationState.i].length) {
-                    iterationState.i++;
-                    iterationState.j = 0;
-                    if (iterationState.i >= currentArray.length) {
-                        document.getElementById('iterationInfo').textContent = 'Iteration complete!';
-                        document.getElementById('nextBtn').disabled = true;
-                        return;
-                    }
-                }
-                
-                const value = currentArray[iterationState.i][iterationState.j];
-                document.getElementById('iterationInfo').textContent = `Current: array[${iterationState.i}][${iterationState.j}] = ${value}`;
-                
-                // Highlight current element
-                const cells = document.querySelectorAll('.array-cell');
-                cells.forEach(cell => {
-                    const i = parseInt(cell.dataset.i);
-                    const j = parseInt(cell.dataset.j);
-                    cell.classList.remove('highlighted', 'dimmed');
-                    if (i === iterationState.i && j === iterationState.j) {
-                        cell.classList.add('highlighted');
-                    } else {
-                        cell.classList.add('dimmed');
-                    }
-                });
-                
-                iterationState.j++;
-            } else {
-                if (iterationState.i >= currentArray.length) {
-                    document.getElementById('iterationInfo').textContent = 'Iteration complete!';
-                    document.getElementById('nextBtn').disabled = true;
-                    return;
-                }
-                
-                if (iterationState.k >= currentArray[iterationState.i][iterationState.j].length) {
-                    iterationState.j++;
-                    iterationState.k = 0;
-                    if (iterationState.j >= currentArray[iterationState.i].length) {
-                        iterationState.i++;
-                        iterationState.j = 0;
-                        if (iterationState.i >= currentArray.length) {
-                            document.getElementById('iterationInfo').textContent = 'Iteration complete!';
-                            document.getElementById('nextBtn').disabled = true;
-                            return;
-                        }
-                    }
-                }
-                
-                const value = currentArray[iterationState.i][iterationState.j][iterationState.k];
-                document.getElementById('iterationInfo').textContent = `Current: array[${iterationState.i}][${iterationState.j}][${iterationState.k}] = ${value}`;
-                
-                draw3DArray();
-                iterationState.k++;
-            }
-        }
 
         function resetView() {
             // Reset to default view with [0][0][0] at top-left
@@ -959,15 +906,14 @@ ${initList}
             document.getElementById('sizeI').addEventListener('change', initArray);
             document.getElementById('sizeJ').addEventListener('change', initArray);
             document.getElementById('sizeK').addEventListener('change', initArray);
-            document.getElementById('generateBtn').addEventListener('click', initArray);
             
-            document.getElementById('indexI').addEventListener('change', highlightElement);
-            document.getElementById('indexJ').addEventListener('change', highlightElement);
-            document.getElementById('indexK').addEventListener('change', highlightElement);
-            document.getElementById('accessBtn').addEventListener('click', highlightElement);
-            
-            document.getElementById('resetBtn').addEventListener('click', resetIteration);
-            document.getElementById('nextBtn').addEventListener('click', iterateNext);
+            document.getElementById('indexI').addEventListener('change', onIndexChange);
+            document.getElementById('indexJ').addEventListener('change', onIndexChange);
+            document.getElementById('indexK').addEventListener('change', onIndexChange);
+            document.getElementById('indexI').addEventListener('input', onIndexInput);
+            document.getElementById('indexJ').addEventListener('input', onIndexInput);
+            document.getElementById('indexK').addEventListener('input', onIndexInput);
+
             document.getElementById('resetViewBtn').addEventListener('click', resetView);
             
             // Initialize array
