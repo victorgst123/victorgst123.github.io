@@ -3,7 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Java Array Visualizer</title>
+    <title>Java Array Visualizer - Interactive 1D, 2D, 3D Array Learning Tool</title>
+    <meta name="description" content="Interactive Java array visualizer for learning 1D, 2D, and 3D arrays. Visualize array indexing, explore data structures, and understand Java programming concepts with real-time highlighting and 3D visualization.">
+    <meta name="keywords" content="java array, array visualizer, java programming, data structures, 1D array, 2D array, 3D array, java tutorial, programming education, interactive learning, array indexing, java arrays visualization">
+    <meta name="author" content="Java Array Visualizer">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://yoursite.com/java-array-visualizer.html">
+
+    <!-- Open Graph meta tags for social sharing -->
+    <meta property="og:title" content="Java Array Visualizer - Interactive Learning Tool">
+    <meta property="og:description" content="Learn Java arrays with interactive 1D, 2D, and 3D visualizations. Perfect for students and developers learning data structures.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://yoursite.com/java-array-visualizer.html">
+    <meta property="og:image" content="https://yoursite.com/java-array-visualizer-preview.png">
+    <meta property="og:site_name" content="Java Array Visualizer">
+
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Java Array Visualizer - Interactive Learning Tool">
+    <meta name="twitter:description" content="Learn Java arrays with interactive 1D, 2D, and 3D visualizations. Perfect for students and developers.">
+    <meta name="twitter:image" content="https://yoursite.com/java-array-visualizer-preview.png">
+
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Java Array Visualizer",
+        "description": "Interactive educational tool for learning Java arrays with 1D, 2D, and 3D visualizations",
+        "url": "https://yoursite.com/java-array-visualizer.html",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "creator": {
+            "@type": "Organization",
+            "name": "Java Array Visualizer"
+        },
+        "educationalLevel": "Beginner to Intermediate",
+        "teaches": [
+            "Java Arrays",
+            "Data Structures",
+            "Array Indexing",
+            "Programming Fundamentals"
+        ],
+        "keywords": "java array visualizer, programming education, data structures, interactive learning"
+    }
+    </script>
     <style>
         * {
             margin: 0;
@@ -228,7 +277,7 @@
         }
 
 
-        h3 {
+        h2 {
             color: #667eea;
             margin: 15px 0;
             font-size: 1.3em;
@@ -245,73 +294,116 @@
             font-size: 14px;
             margin-top: 10px;
         }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #666;
+            font-size: 14px;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1><span class="logo-icon">🧊</span> Java Array Visualizer</h1>
-        
-        <div class="controls">
+    <main class="container">
+        <header>
+            <h1><span class="logo-icon">🧊</span> Java Array Visualizer</h1>
+        </header>
+
+        <section class="controls" aria-label="Array Configuration Controls">
             <div class="control-group">
-                <label>Array Type:</label>
-                <select id="arrayType">
+                <label for="arrayType">Array Type:</label>
+                <select id="arrayType" aria-describedby="arrayTypeHelp">
                     <option value="1D">1D Array</option>
                     <option value="2D">2D Array</option>
                     <option value="3D">3D Array</option>
                 </select>
+                <span id="arrayTypeHelp" class="sr-only">Select the type of array to visualize</span>
             </div>
-            
+
             <div class="control-group">
-                <label>Size (i):</label>
-                <input type="number" id="sizeI" value="5" min="1" max="10">
+                <label for="sizeI">Size (i):</label>
+                <input type="number" id="sizeI" value="5" min="1" max="10" aria-describedby="sizeIHelp">
+                <span id="sizeIHelp" class="sr-only">Set the size of the first dimension (1-10)</span>
             </div>
-            
+
             <div class="control-group" id="sizeJGroup" style="display:none;">
-                <label>Size (j):</label>
-                <input type="number" id="sizeJ" value="4" min="1" max="10">
+                <label for="sizeJ">Size (j):</label>
+                <input type="number" id="sizeJ" value="4" min="1" max="10" aria-describedby="sizeJHelp">
+                <span id="sizeJHelp" class="sr-only">Set the size of the second dimension (1-10)</span>
             </div>
-            
+
             <div class="control-group" id="sizeKGroup" style="display:none;">
-                <label>Size (k):</label>
-                <input type="number" id="sizeK" value="3" min="1" max="10">
+                <label for="sizeK">Size (k):</label>
+                <input type="number" id="sizeK" value="3" min="1" max="10" aria-describedby="sizeKHelp">
+                <span id="sizeKHelp" class="sr-only">Set the size of the third dimension (1-10)</span>
             </div>
 
             <br>
 
             <div class="control-group">
-                <label>Access Index (i):</label>
-                <input type="number" id="indexI" value="0" min="0">
+                <label for="indexI">Access Index (i):</label>
+                <input type="number" id="indexI" value="0" min="0" aria-describedby="indexIHelp">
+                <span id="indexIHelp" class="sr-only">Select which element to highlight in the first dimension</span>
             </div>
 
             <div class="control-group" id="indexJGroup" style="display:none;">
-                <label>Index (j):</label>
-                <input type="number" id="indexJ" value="0" min="0">
+                <label for="indexJ">Index (j):</label>
+                <input type="number" id="indexJ" value="0" min="0" aria-describedby="indexJHelp">
+                <span id="indexJHelp" class="sr-only">Select which element to highlight in the second dimension</span>
             </div>
 
             <div class="control-group" id="indexKGroup" style="display:none;">
-                <label>Index (k):</label>
-                <input type="number" id="indexK" value="0" min="0">
+                <label for="indexK">Index (k):</label>
+                <input type="number" id="indexK" value="0" min="0" aria-describedby="indexKHelp">
+                <span id="indexKHelp" class="sr-only">Select which element to highlight in the third dimension</span>
             </div>
-            
-        </div>
-        
-        <div class="main-content">
-            <div class="code-section">
-                <h3>📝 Java Code</h3>
-                <div id="codeDisplay" class="code-display"></div>
-                
-            </div>
-            
-            <div class="visualization-section">
-                <h3>🎨 Visualization</h3>
-                <div id="visualization"></div>
+
+        </section>
+
+        <section class="main-content" aria-label="Array Visualization">
+            <article class="code-section">
+                <h2>📝 Java Code</h2>
+                <div id="codeDisplay" class="code-display" role="region" aria-label="Generated Java Code"></div>
+            </article>
+
+            <article class="visualization-section">
+                <h2>🎨 Visualization</h2>
+                <div id="visualization" role="region" aria-label="Array Visual Representation"></div>
                 <div id="canvasControls" class="canvas-controls" style="display:none;">
-                    <button id="resetViewBtn">🎯 Reset View</button>
+                    <button id="resetViewBtn" aria-label="Reset 3D view to default position">🎯 Reset View</button>
                     <div class="canvas-info">Drag to rotate • Scroll to zoom • [0][0][0] starts at top-left</div>
                 </div>
-            </div>
-        </div>
-    </div>
+            </article>
+        </section>
+
+        <footer>
+            <p>Email <a href="mailto:guosite@gmail.com">guosite@gmail.com</a> for feedback</p>
+        </footer>
+    </main>
 
     <script>
         let currentArray = [];
