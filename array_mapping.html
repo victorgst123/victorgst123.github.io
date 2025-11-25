@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Map Array to Array (x2) - Tailwind + jQuery</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body class="bg-gray-100">
+<div class="flex min-h-screen">
+  <!-- Left: Java code -->
+  <div class="w-2/5 border-r border-gray-300 p-4 bg-white">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-lg font-semibold">Java Code (Map Array to Array: ×2)</h2>
+      <button id="toggleCode"
+              class="px-3 py-1 border border-gray-700 rounded text-sm">
+        Show Code
+      </button>
+    </div>
+
+    <pre id="codeBlock"
+         class="hidden bg-slate-900 text-slate-100 p-3 rounded text-xs overflow-x-auto"><code>import java.util.Arrays;
+
+public class Main {
+    public static void main(String[] args) {
+        <span class="code-frag" id="c-nums">int[] nums = {3, 7, 2, 9, 5};</span>
+        <span class="code-frag" id="c-new">int[] doubled = new int[nums.length];</span>
+
+        for (
+            <span class="code-frag" id="c-for-init">int i = 0;</span>
+            <span class="code-frag" id="c-for-cond">i &lt; nums.length;</span>
+            <span class="code-frag" id="c-for-inc">i++</span>
+        ) {
+            <span class="code-frag" id="c-assign">doubled[i] = nums[i] * 2;</span>
+        }
+
+        <span class="code-frag" id="c-print">System.out.println(Arrays.toString(doubled));</span>
+    }
+}
+</code></pre>
+  </div>
+
+  <!-- Right: visualization -->
+  <div class="flex-1 p-6 space-y-4">
+    <div>
+      <h1 class="text-2xl font-semibold mb-1">Mapping Array to Array: each element × 2</h1>
+      <p class="text-sm text-gray-600">
+        We create a new array where each element is twice the corresponding element in the original array.
+        Click <span class="font-semibold">Next Step</span> to walk through the mapping.
+      </p>
+    </div>
+
+    <!-- Arrays -->
+    <div class="space-y-3">
+      <div>
+        <div class="text-sm font-semibold mb-1">Original array: nums</div>
+        <div id="arrayIn" class="flex gap-3"></div>
+      </div>
+      <div>
+        <div class="text-sm font-semibold mb-1">New array: doubled</div>
+        <div id="arrayOut" class="flex gap-3"></div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex gap-3 mt-2">
+      <button id="next"
+              class="px-4 py-2 rounded bg-blue-600 text-white text-sm">
+        Next Step
+      </button>
+      <button id="reset"
+              class="px-4 py-2 rounded bg-gray-200 text-sm">
+        Reset
+      </button>
+    </div>
+
+    <!-- Status -->
+    <div class="mt-4 p-3 bg-white rounded border border-gray-200 text-sm space-y-1">
+      <div>
+        <span class="font-semibold">Explanation:</span>
+        <span id="msg">Click "Next Step" to start from setting up the arrays.</span>
+      </div>
+      <div>
+        <span class="font-semibold">Current index i:</span>
+        <span id="curIdx">-</span>
+      </div>
+      <div>
+        <span class="font-semibold">Current input value nums[i]:</span>
+        <span id="inVal">-</span>
+      </div>
+      <div>
+        <span class="font-semibold">Current output value doubled[i]:</span>
+        <span id="outVal">-</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const nums = [3, 7, 2, 9, 5];
+  let doubled = [];
+  let i, curIdx, phase, done;
+
+  function renderArrays() {
+    const $in = $('#arrayIn').empty();
+    const $out = $('#arrayOut').empty();
+
+    nums.forEach((v, idx) => {
+      $in.append(
+        `<div class="w-16 h-16 border-2 border-gray-400 rounded-lg bg-white
+                     flex flex-col items-center justify-center text-lg font-medium
+                     relative" data-in="${idx}">
+            <span class="val">${v}</span>
+            <span class="text-[10px] text-gray-500 mt-1">index ${idx}</span>
+            <span class="tag-current hidden absolute -top-4 left-0 text-[10px] text-blue-600">current</span>
+         </div>`
+      );
+    });
+
+    nums.forEach((_, idx) => {
+      $out.append(
+        `<div class="w-16 h-16 border-2 border-gray-300 rounded-lg bg-white
+                     flex flex-col items-center justify-center text-lg font-medium
+                     relative" data-out="${idx}">
+            <span class="val">?</span>
+            <span class="text-[10px] text-gray-500 mt-1">index ${idx}</span>
+            <span class="tag-out hidden absolute -top-4 right-0 text-[10px] text-green-600">written</span>
+         </div>`
+      );
+    });
+  }
+
+  function hiCode(id) {
+    $('.code-frag').removeClass('bg-yellow-300 text-black rounded px-1');
+    if (id) $('#' + id).addClass('bg-yellow-300 text-black rounded px-1');
+  }
+
+  function hiArrays() {
+    // clear styles
+    $('[data-in]').removeClass('border-blue-500 shadow-md');
+    $('[data-in] .tag-current').addClass('hidden');
+
+    $('[data-out]').removeClass('border-green-500 shadow-md');
+    $('[data-out] .tag-out').addClass('hidden');
+
+    // highlight current input
+    if (curIdx >= 0) {
+      const $inCell = $(`[data-in=${curIdx}]`);
+      $inCell.addClass('border-blue-500 shadow-md');
+      $inCell.find('.tag-current').removeClass('hidden');
+    }
+
+    // highlight current output (for written cells)
+    doubled.forEach((val, idx) => {
+      if (val !== null && val !== undefined) {
+        const $outCell = $(`[data-out=${idx}]`);
+        $outCell.addClass('border-green-500 shadow-md');
+        if (idx === curIdx) {
+          $outCell.find('.tag-out').removeClass('hidden');
+        }
+      }
+    });
+  }
+
+  function setText(msg, idx, inValue, outValue) {
+    if (msg !== null) $('#msg').text(msg);
+    if (idx !== null) $('#curIdx').text(idx);
+    if (inValue !== null) $('#inVal').text(inValue);
+    if (outValue !== null) $('#outVal').text(outValue);
+  }
+
+  function updateOutCell(index) {
+    const val = doubled[index];
+    $(`[data-out=${index}] .val`).text(val !== null && val !== undefined ? val : '?');
+  }
+
+  function step() {
+    if (done) return;
+
+    switch (phase) {
+      case 'initNums':
+        hiCode('c-nums');
+        setText('Define the original array nums.', '-', '-', '-');
+        phase = 'initNew';
+        break;
+
+      case 'initNew':
+        hiCode('c-new');
+        doubled = new Array(nums.length).fill(null);
+        renderArrays();
+        setText('Create the new array doubled with the same length as nums.', '-', '-', '-');
+        phase = 'forInit';
+        break;
+
+      case 'forInit':
+        hiCode('c-for-init');
+        i = 0;
+        curIdx = 0;
+        hiArrays();
+        setText('Run the initialization of the for loop: int i = 0.', i, nums[i], '-');
+        phase = 'forCond';
+        break;
+
+      case 'forCond':
+        hiCode('c-for-cond');
+        if (i < nums.length) {
+          curIdx = i;
+          hiArrays();
+          setText(
+            `Check i < nums.length: ${i} < ${nums.length} is true, enter the loop body.`,
+            i,
+            nums[i],
+            doubled[i] !== null ? doubled[i] : '-'
+          );
+          phase = 'assign';
+        } else {
+          curIdx = -1;
+          hiArrays();
+          setText(
+            `Check i < nums.length: ${i} < ${nums.length} is false, exit the loop.`,
+            '-',
+            '-',
+            '-'
+          );
+          phase = 'print';
+        }
+        break;
+
+      case 'assign':
+        hiCode('c-assign');
+        doubled[i] = nums[i] * 2;
+        updateOutCell(i);
+        hiArrays();
+        setText(
+          `Compute doubled[${i}] = nums[${i}] * 2 = ${nums[i]} * 2 = ${doubled[i]}.`,
+          i,
+          nums[i],
+          doubled[i]
+        );
+        phase = 'forInc';
+        break;
+
+      case 'forInc':
+        hiCode('c-for-inc');
+        i++;
+        if (i < nums.length) {
+          curIdx = i;
+          hiArrays();
+          setText(
+            `Run i++, now i = ${i}. We will check the loop condition again.`,
+            i,
+            nums[i],
+            doubled[i] !== null ? doubled[i] : '-'
+          );
+        } else {
+          curIdx = -1;
+          hiArrays();
+          setText(
+            `Run i++, now i = ${i}. Next time we check the condition, the loop will end.`,
+            '-',
+            '-',
+            '-'
+          );
+        }
+        phase = 'forCond';
+        break;
+
+      case 'print':
+        hiCode('c-print');
+        const finalArr = '[' + doubled.map(v => (v === null ? '?' : v)).join(', ') + ']';
+        setText(
+          `Print the new array doubled. At runtime it would be ${finalArr}.`,
+          '-',
+          '-',
+          '-'
+        );
+        done = true;
+        $('#next').prop('disabled', true).addClass('opacity-60 cursor-not-allowed');
+        break;
+    }
+  }
+
+  function reset() {
+    doubled = new Array(nums.length).fill(null);
+    i = 0;
+    curIdx = -1;
+    phase = 'initNums';
+    done = false;
+    $('#next').prop('disabled', false).removeClass('opacity-60 cursor-not-allowed');
+    renderArrays();
+    hiCode(null);
+    hiArrays();
+    setText('Click "Next Step" to start from setting up the arrays.', '-', '-', '-');
+  }
+
+  $(function () {
+    renderArrays();
+    reset();
+
+    $('#next').on('click', step);
+    $('#reset').on('click', reset);
+    $('#toggleCode').on('click', function () {
+      $('#codeBlock').toggleClass('hidden');
+      $(this).text($('#codeBlock').hasClass('hidden') ? 'Show Code' : 'Hide Code');
+    });
+  });
+</script>
+</body>
+</html>
