@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Linear Search - Find Target (Tailwind + jQuery)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body class="bg-gray-100">
+<div class="flex min-h-screen">
+  <!-- Left: Java code -->
+  <div class="w-2/5 border-r border-gray-300 p-4 bg-white">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-lg font-semibold">Java Code (Linear Search)</h2>
+      <button id="toggleCode"
+              class="px-3 py-1 border border-gray-700 rounded text-sm">
+        Show Code
+      </button>
+    </div>
+
+    <pre id="codeBlock"
+         class="hidden bg-slate-900 text-slate-100 p-3 rounded text-xs overflow-x-auto"><code>public class Main {
+    public static void main(String[] args) {
+        int[] nums = {3, 7, 2, 9, 5};
+        <span class="code-frag" id="c-target">int target = 9;</span>
+        <span class="code-frag" id="c-index-init">int index = -1;</span>
+
+        for (
+            <span class="code-frag" id="c-for-init">int i = 0;</span>
+            <span class="code-frag" id="c-for-cond">i &lt; nums.length;</span>
+            <span class="code-frag" id="c-for-inc">i++</span>
+        ) {
+            <span class="code-frag" id="c-if">if (nums[i] == target) {</span>
+                <span class="code-frag" id="c-found">index = i;</span>
+                <span class="code-frag" id="c-break">break;</span>
+            }
+        }
+
+        <span class="code-frag" id="c-print">System.out.println("Index: " + index);</span>
+    }
+}
+</code></pre>
+  </div>
+
+  <!-- Right: visualization -->
+  <div class="flex-1 p-6 space-y-4">
+    <div>
+      <h1 class="text-2xl font-semibold mb-1">Linear Search for a Target Value</h1>
+      <p class="text-sm text-gray-600">
+        We scan the array from left to right and stop when we find the target.
+        Click <span class="font-semibold">Next Step</span> to follow the algorithm.
+      </p>
+    </div>
+
+    <div id="array" class="flex gap-3 mt-2"></div>
+
+    <div class="flex gap-3 mt-2">
+      <button id="next"
+              class="px-4 py-2 rounded bg-blue-600 text-white text-sm">
+        Next Step
+      </button>
+      <button id="reset"
+              class="px-4 py-2 rounded bg-gray-200 text-sm">
+        Reset
+      </button>
+    </div>
+
+    <div class="mt-4 p-3 bg-white rounded border border-gray-200 text-sm space-y-1">
+      <div>
+        <span class="font-semibold">Explanation:</span>
+        <span id="msg">Click "Next Step" to start with the target and index initialization.</span>
+      </div>
+      <div>
+        <span class="font-semibold">Current index i:</span>
+        <span id="curIdx">-</span>
+      </div>
+      <div>
+        <span class="font-semibold">Target value:</span>
+        <span id="targetVal">9</span>
+      </div>
+      <div>
+        <span class="font-semibold">Found index (index):</span>
+        <span id="foundIdx">-1</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const nums = [3, 7, 2, 9, 5];
+  const target = 9;
+
+  let i, index, curIdx, phase, done;
+
+  function renderArray() {
+    const $a = $('#array').empty();
+    nums.forEach((v, idx) => {
+      $a.append(
+        `<div class="w-16 h-16 border-2 border-gray-400 rounded-lg bg-white
+                     flex flex-col items-center justify-center text-lg font-medium
+                     relative" data-i="${idx}">
+            <span>${v}</span>
+            <span class="text-[10px] text-gray-500 mt-1">index ${idx}</span>
+            <span class="tag-current hidden absolute -top-4 left-0 text-[10px] text-blue-600">current</span>
+            <span class="tag-found hidden absolute -top-4 right-0 text-[10px] text-green-600">found</span>
+         </div>`
+      );
+    });
+  }
+
+  function hiCode(id) {
+    $('.code-frag').removeClass('bg-yellow-300 text-black rounded px-1');
+    if (id) $('#' + id).addClass('bg-yellow-300 text-black rounded px-1');
+  }
+
+  function hiArray() {
+    $('[data-i]').removeClass('border-blue-500 border-green-500 shadow-md');
+    $('[data-i] .tag-current').addClass('hidden');
+    $('[data-i] .tag-found').addClass('hidden');
+
+    if (index >= 0) {
+      const $f = $(`[data-i=${index}]`);
+      $f.addClass('border-green-500 shadow-md');
+      $f.find('.tag-found').removeClass('hidden');
+    }
+    if (curIdx >= 0) {
+      const $c = $(`[data-i=${curIdx}]`);
+      $c.addClass('border-blue-500 shadow-md');
+      $c.find('.tag-current').removeClass('hidden');
+    }
+  }
+
+  function setText(msg, cur, idxVal) {
+    if (msg !== null) $('#msg').text(msg);
+    if (cur !== null) $('#curIdx').text(cur);
+    if (idxVal !== null) $('#foundIdx').text(idxVal);
+  }
+
+  function step() {
+    if (done) return;
+
+    switch (phase) {
+      case 'initTarget':
+        hiCode('c-target');
+        $('#targetVal').text(target);
+        setText(`Set target = ${target}.`, '-', index);
+        phase = 'initIndex';
+        break;
+
+      case 'initIndex':
+        hiCode('c-index-init');
+        index = -1;
+        setText('Initialize index = -1 (meaning "not found yet").', '-', index);
+        phase = 'forInit';
+        break;
+
+      case 'forInit':
+        hiCode('c-for-init');
+        i = 0;
+        curIdx = 0;
+        hiArray();
+        setText('Run the initialization of the for loop: int i = 0.', i, index);
+        phase = 'forCond';
+        break;
+
+      case 'forCond':
+        hiCode('c-for-cond');
+        if (i < nums.length) {
+          curIdx = i;
+          hiArray();
+          setText(
+            `Check i < nums.length: ${i} < ${nums.length} is true, enter the loop body.`,
+            i,
+            index
+          );
+          phase = 'ifCompare';
+        } else {
+          curIdx = -1;
+          hiArray();
+          setText(
+            `Check i < nums.length: ${i} < ${nums.length} is false, exit the loop.`,
+            '-',
+            index
+          );
+          phase = 'print';
+        }
+        break;
+
+      case 'ifCompare':
+        hiCode('c-if');
+        setText(
+          `Compare nums[i] with target: nums[${i}] = ${nums[i]}, target = ${target}.`,
+          i,
+          index
+        );
+        phase = 'foundOrNot';
+        break;
+
+      case 'foundOrNot':
+        if (nums[i] === target) {
+          hiCode('c-found');
+          index = i;
+          hiArray();
+          setText(
+            `nums[${i}] equals the target. Set index = ${i}.`,
+            i,
+            index
+          );
+          phase = 'doBreak';
+        } else {
+          hiCode('c-if');
+          setText(
+            `nums[${i}] is not equal to target. index stays = ${index}.`,
+            i,
+            index
+          );
+          phase = 'forInc';
+        }
+        break;
+
+      case 'doBreak':
+        hiCode('c-break');
+        setText(
+          `Execute break; to leave the loop because we already found the target.`,
+          '-',
+          index
+        );
+        curIdx = -1;
+        hiArray();
+        phase = 'print';
+        break;
+
+      case 'forInc':
+        hiCode('c-for-inc');
+        i++;
+        if (i < nums.length) {
+          curIdx = i;
+          setText(
+            `Run i++, now i = ${i}. We will check the loop condition again.`,
+            i,
+            index
+          );
+        } else {
+          curIdx = -1;
+          setText(
+            `Run i++, now i = ${i}. Next time we check the condition, the loop will end.`,
+            '-',
+            index
+          );
+        }
+        hiArray();
+        phase = 'forCond';
+        break;
+
+      case 'print':
+        hiCode('c-print');
+        setText(
+          `Print the result: index = ${index}. For this array, the target ${target} is at index ${index}.`,
+          '-',
+          index
+        );
+        done = true;
+        $('#next').prop('disabled', true).addClass('opacity-60 cursor-not-allowed');
+        break;
+    }
+  }
+
+  function reset() {
+    i = 0;
+    index = -1;
+    curIdx = -1;
+    phase = 'initTarget';
+    done = false;
+    $('#next').prop('disabled', false).removeClass('opacity-60 cursor-not-allowed');
+    renderArray();
+    hiCode(null);
+    hiArray();
+    $('#targetVal').text(target);
+    setText('Click "Next Step" to start with the target and index initialization.', '-', index);
+  }
+
+  $(function () {
+    renderArray();
+    reset();
+
+    $('#next').on('click', step);
+    $('#reset').on('click', reset);
+    $('#toggleCode').on('click', function () {
+      $('#codeBlock').toggleClass('hidden');
+      $(this).text($('#codeBlock').hasClass('hidden') ? 'Show Code' : 'Hide Code');
+    });
+  });
+</script>
+</body>
+</html>
