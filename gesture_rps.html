@@ -388,27 +388,28 @@ async function loadModel() {
 //   Wrist=0, Thumb: 1-4, Index: 5-8,
 //   Middle: 9-12, Ring: 13-16, Pinky: 17-20
 // ─────────────────────────────────────────────
-function isFingerUp(landmarks, tip, pip, mcp) {
-  // A finger is "up" when its tip is clearly above its MCP joint
-  // In screen coords y increases downward, so tip.y < mcp.y means up
-  return landmarks[tip].y < landmarks[mcp].y - 20;
+function isFingerUp(landmarks, tipIdx, pipIdx) {
+  // Scale threshold relative to actual hand size so it works at any distance.
+  // Hand height = wrist(0) to middle-finger MCP(9).
+  const handHeight = Math.abs(landmarks[0].y - landmarks[9].y) || 80;
+  const threshold  = handHeight * 0.08;          // ~8% of hand height
+  // Finger is "up" when its tip is above (smaller y) than its PIP joint.
+  return landmarks[tipIdx].y < landmarks[pipIdx].y - threshold;
 }
 
 function classifyGesture(landmarks) {
-  const indexUp  = isFingerUp(landmarks, 8,  6,  5);
-  const middleUp = isFingerUp(landmarks, 12, 10, 9);
-  const ringUp   = isFingerUp(landmarks, 16, 14, 13);
-  const pinkyUp  = isFingerUp(landmarks, 20, 18, 17);
-
-  // Thumb: compare tip x to knuckle x (mirrored video, so reversed)
-  const thumbUp  = Math.abs(landmarks[4].x - landmarks[2].x) > 30;
+  //           tip  pip
+  const indexUp  = isFingerUp(landmarks,  8,  6);
+  const middleUp = isFingerUp(landmarks, 12, 10);
+  const ringUp   = isFingerUp(landmarks, 16, 14);
+  const pinkyUp  = isFingerUp(landmarks, 20, 18);
 
   const upCount = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
 
-  if (!indexUp && !middleUp && !ringUp && !pinkyUp) return 'rock';
-  if (indexUp  && middleUp  && !ringUp && !pinkyUp) return 'scissors';
-  if (upCount >= 3) return 'paper';
-  return null;
+  if (upCount === 0)                               return 'rock';
+  if (indexUp && middleUp && !ringUp && !pinkyUp)  return 'scissors';
+  if (upCount >= 3)                                return 'paper';
+  return null;  // ambiguous — badge shows "Hold still…"
 }
 
 // ─────────────────────────────────────────────
