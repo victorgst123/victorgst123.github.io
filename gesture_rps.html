@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gesture Rock Paper Scissors</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection@2.0.1/dist/hand-pose-detection.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f1a;
+      color: #e0e0ff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 6px;
+      background: linear-gradient(90deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: #7c83a8;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    /* ── Score bar ── */
+    .scoreboard {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+      margin-bottom: 18px;
+    }
+    .score-box {
+      text-align: center;
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      border-radius: 12px;
+      padding: 10px 24px;
+    }
+    .score-label { font-size: 0.7rem; color: #7c83a8; text-transform: uppercase; letter-spacing: 1px; }
+    .score-value { font-size: 1.8rem; font-weight: 700; }
+    .score-box.you   .score-value { color: #60a5fa; }
+    .score-box.cpu   .score-value { color: #f87171; }
+    .score-box.draw  .score-value { color: #a3a3a3; }
+
+    /* ── Main arena ── */
+    .arena {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 960px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Camera side ── */
+    .cam-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .video-wrapper {
+      position: relative;
+      width: 340px;
+      height: 255px;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid #2a2a4a;
+      background: #0a0a14;
+    }
+
+    #video {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* mirror */
+    }
+
+    #overlay {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      transform: scaleX(-1);
+    }
+
+    .gesture-badge {
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 6px 18px;
+      border-radius: 999px;
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      min-width: 160px;
+      text-align: center;
+      transition: all 0.25s;
+    }
+    .gesture-badge.rock     { border-color: #a78bfa; color: #a78bfa; }
+    .gesture-badge.paper    { border-color: #60a5fa; color: #60a5fa; }
+    .gesture-badge.scissors { border-color: #34d399; color: #34d399; }
+
+    /* ── VS column ── */
+    .vs-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding-top: 60px;
+    }
+
+    .vs-label {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: #3b3b5c;
+    }
+
+    #playBtn {
+      padding: 13px 34px;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      color: #fff;
+      transition: opacity 0.2s, transform 0.1s;
+      box-shadow: 0 4px 20px rgba(167,139,250,0.35);
+    }
+    #playBtn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    #playBtn:hover:not(:disabled) { opacity: 0.9; transform: scale(1.04); }
+
+    /* ── CPU side ── */
+    .cpu-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cpu-display {
+      width: 340px;
+      height: 255px;
+      border-radius: 16px;
+      border: 2px solid #2a2a4a;
+      background: #0a0a14;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 6rem;
+      line-height: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cpu-display .cpu-label {
+      font-size: 0.75rem;
+      color: #4a4a6a;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .cpu-display .cpu-emoji {
+      filter: drop-shadow(0 0 20px rgba(248,113,113,0.4));
+      transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
+    }
+    .cpu-display .cpu-emoji.pop {
+      animation: pop 0.4s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes pop {
+      0%   { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+      100% { transform: scale(1) rotate(0deg);     opacity: 1; }
+    }
+
+    .cpu-gesture-badge {
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 6px 18px;
+      border-radius: 999px;
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      min-width: 160px;
+      text-align: center;
+      color: #f87171;
+    }
+
+    /* ── Result banner ── */
+    .result-banner {
+      margin-top: 22px;
+      font-size: clamp(1.2rem, 3.5vw, 1.6rem);
+      font-weight: 800;
+      text-align: center;
+      min-height: 2.2rem;
+      letter-spacing: 1px;
+      transition: all 0.3s;
+    }
+    .result-banner.win  { color: #34d399; text-shadow: 0 0 20px rgba(52,211,153,0.5); }
+    .result-banner.lose { color: #f87171; text-shadow: 0 0 20px rgba(248,113,113,0.5); }
+    .result-banner.draw { color: #a3a3a3; }
+
+    /* ── Status / instructions ── */
+    #status {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #5a5a8a;
+      text-align: center;
+      min-height: 1.2rem;
+    }
+
+    /* ── Countdown overlay ── */
+    #countdown {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12rem;
+      font-weight: 900;
+      color: #a78bfa;
+      text-shadow: 0 0 60px rgba(167,139,250,0.6);
+      pointer-events: none;
+      opacity: 0;
+      z-index: 100;
+    }
+
+    /* ── Rules footer ── */
+    .rules {
+      margin-top: 28px;
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+      color: #4a4a6a;
+    }
+    .rules span { padding: 4px 12px; border: 1px solid #2a2a4a; border-radius: 999px; }
+
+    @media (max-width: 600px) {
+      .video-wrapper, .cpu-display { width: 280px; height: 210px; }
+      .vs-col { padding-top: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>✊ ✋ ✌️ Gesture Rock Paper Scissors</h1>
+<p class="subtitle">Show your hand to the camera — let AI read your move!</p>
+
+<div class="scoreboard">
+  <div class="score-box you">
+    <div class="score-label">You</div>
+    <div class="score-value" id="scoreYou">0</div>
+  </div>
+  <div class="score-box draw">
+    <div class="score-label">Draw</div>
+    <div class="score-value" id="scoreDraw">0</div>
+  </div>
+  <div class="score-box cpu">
+    <div class="score-label">CPU</div>
+    <div class="score-value" id="scoreCpu">0</div>
+  </div>
+</div>
+
+<div class="arena">
+
+  <!-- User camera -->
+  <div class="cam-panel">
+    <div class="video-wrapper">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+    <div class="gesture-badge" id="userBadge">Waiting for camera…</div>
+  </div>
+
+  <!-- VS / play button -->
+  <div class="vs-col">
+    <div class="vs-label">VS</div>
+    <button id="playBtn" disabled>Play!</button>
+    <div id="countdown">3</div>
+  </div>
+
+  <!-- CPU hand -->
+  <div class="cpu-panel">
+    <div class="cpu-display" id="cpuDisplay">
+      <span class="cpu-label">Computer</span>
+      <span class="cpu-emoji" id="cpuEmoji">🤔</span>
+    </div>
+    <div class="cpu-gesture-badge" id="cpuBadge">Waiting…</div>
+  </div>
+
+</div>
+
+<div class="result-banner" id="resultBanner"></div>
+<div id="status">Loading AI model…</div>
+
+<div class="rules">
+  <span>Rock beats Scissors</span>
+  <span>Scissors beats Paper</span>
+  <span>Paper beats Rock</span>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// Constants & State
+// ─────────────────────────────────────────────
+const GESTURES = {
+  rock:     { emoji: '✊', label: 'Rock' },
+  paper:    { emoji: '🖐️', label: 'Paper' },
+  scissors: { emoji: '✌️', label: 'Scissors' },
+};
+
+const BEATS = { rock: 'scissors', scissors: 'paper', paper: 'rock' };
+
+let detector = null;
+let currentGesture = null;
+let scores = { you: 0, draw: 0, cpu: 0 };
+let busy = false;
+
+const video      = document.getElementById('video');
+const overlay    = document.getElementById('overlay');
+const ctx        = overlay.getContext('2d');
+const userBadge  = document.getElementById('userBadge');
+const cpuEmoji   = document.getElementById('cpuEmoji');
+const cpuBadge   = document.getElementById('cpuBadge');
+const resultBanner = document.getElementById('resultBanner');
+const statusEl   = document.getElementById('status');
+const playBtn    = document.getElementById('playBtn');
+const cdEl       = document.getElementById('countdown');
+
+// ─────────────────────────────────────────────
+// Camera
+// ─────────────────────────────────────────────
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'user' }
+    });
+    video.srcObject = stream;
+    await new Promise(r => video.onloadedmetadata = r);
+    overlay.width  = video.videoWidth;
+    overlay.height = video.videoHeight;
+  } catch (e) {
+    statusEl.textContent = 'Camera error: ' + e.message;
+    throw e;
+  }
+}
+
+// ─────────────────────────────────────────────
+// Model
+// ─────────────────────────────────────────────
+async function loadModel() {
+  const model   = handPoseDetection.SupportedModels.MediaPipeHands;
+  const config  = {
+    runtime: 'tfjs',
+    solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915',
+    modelType: 'full',
+    maxHands: 1,
+  };
+  detector = await handPoseDetection.createDetector(model, config);
+}
+
+// ─────────────────────────────────────────────
+// Gesture Classification
+// Landmark indices (MediaPipe):
+//   Wrist=0, Thumb: 1-4, Index: 5-8,
+//   Middle: 9-12, Ring: 13-16, Pinky: 17-20
+// ─────────────────────────────────────────────
+function isFingerUp(landmarks, tip, pip, mcp) {
+  // A finger is "up" when its tip is clearly above its MCP joint
+  // In screen coords y increases downward, so tip.y < mcp.y means up
+  return landmarks[tip].y < landmarks[mcp].y - 20;
+}
+
+function classifyGesture(landmarks) {
+  const indexUp  = isFingerUp(landmarks, 8,  6,  5);
+  const middleUp = isFingerUp(landmarks, 12, 10, 9);
+  const ringUp   = isFingerUp(landmarks, 16, 14, 13);
+  const pinkyUp  = isFingerUp(landmarks, 20, 18, 17);
+
+  // Thumb: compare tip x to knuckle x (mirrored video, so reversed)
+  const thumbUp  = Math.abs(landmarks[4].x - landmarks[2].x) > 30;
+
+  const upCount = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
+
+  if (!indexUp && !middleUp && !ringUp && !pinkyUp) return 'rock';
+  if (indexUp  && middleUp  && !ringUp && !pinkyUp) return 'scissors';
+  if (upCount >= 3) return 'paper';
+  return null;
+}
+
+// ─────────────────────────────────────────────
+// Detection Loop
+// ─────────────────────────────────────────────
+async function detectionLoop() {
+  if (!detector) return requestAnimationFrame(detectionLoop);
+
+  const hands = await detector.estimateHands(video, { flipHorizontal: true });
+
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+  if (hands.length > 0) {
+    const landmarks = hands[0].keypoints;
+    drawHand(landmarks);
+    const g = classifyGesture(landmarks);
+    currentGesture = g;
+    if (g) {
+      userBadge.textContent = GESTURES[g].emoji + '  ' + GESTURES[g].label;
+      userBadge.className = 'gesture-badge ' + g;
+    } else {
+      userBadge.textContent = '🖐 Hold still…';
+      userBadge.className = 'gesture-badge';
+    }
+  } else {
+    currentGesture = null;
+    userBadge.textContent = '👀 Show your hand';
+    userBadge.className = 'gesture-badge';
+  }
+
+  if (!busy) playBtn.disabled = !currentGesture;
+
+  requestAnimationFrame(detectionLoop);
+}
+
+// ─────────────────────────────────────────────
+// Draw Hand Skeleton
+// ─────────────────────────────────────────────
+const CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [0,9],[9,10],[10,11],[11,12],
+  [0,13],[13,14],[14,15],[15,16],
+  [0,17],[17,18],[18,19],[19,20],
+  [5,9],[9,13],[13,17],
+];
+
+function drawHand(landmarks) {
+  ctx.strokeStyle = 'rgba(167,139,250,0.7)';
+  ctx.lineWidth = 2;
+
+  for (const [a, b] of CONNECTIONS) {
+    ctx.beginPath();
+    ctx.moveTo(landmarks[a].x, landmarks[a].y);
+    ctx.lineTo(landmarks[b].x, landmarks[b].y);
+    ctx.stroke();
+  }
+
+  for (const pt of landmarks) {
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#a78bfa';
+    ctx.fill();
+  }
+}
+
+// ─────────────────────────────────────────────
+// Play Round
+// ─────────────────────────────────────────────
+playBtn.addEventListener('click', async () => {
+  if (busy || !currentGesture) return;
+  busy = true;
+  playBtn.disabled = true;
+  resultBanner.textContent = '';
+  resultBanner.className = 'result-banner';
+
+  // Countdown
+  for (const n of ['3','2','1','✊']) {
+    cdEl.textContent = n;
+    cdEl.style.opacity = '1';
+    await sleep(450);
+    cdEl.style.opacity = '0';
+    await sleep(100);
+  }
+
+  // Capture gesture at this moment
+  const userMove = currentGesture;
+
+  // CPU picks random
+  const choices  = ['rock','paper','scissors'];
+  const cpuMove  = choices[Math.floor(Math.random() * 3)];
+
+  // Animate CPU emoji
+  cpuEmoji.classList.remove('pop');
+  void cpuEmoji.offsetWidth; // reflow
+  cpuEmoji.textContent = GESTURES[cpuMove].emoji;
+  cpuEmoji.classList.add('pop');
+  cpuBadge.textContent = GESTURES[cpuMove].label;
+
+  // Evaluate
+  let result, label;
+  if (userMove === cpuMove) {
+    result = 'draw'; label = "🤝 It's a Draw!";
+    scores.draw++;
+  } else if (BEATS[userMove] === cpuMove) {
+    result = 'win';  label = '🎉 You Win!';
+    scores.you++;
+  } else {
+    result = 'lose'; label = '💀 You Lose!';
+    scores.cpu++;
+  }
+
+  resultBanner.textContent = label;
+  resultBanner.className   = 'result-banner ' + result;
+
+  document.getElementById('scoreYou').textContent  = scores.you;
+  document.getElementById('scoreDraw').textContent = scores.draw;
+  document.getElementById('scoreCpu').textContent  = scores.cpu;
+
+  statusEl.textContent = `You showed ${GESTURES[userMove].label} — CPU showed ${GESTURES[cpuMove].label}`;
+
+  await sleep(1800);
+  busy = false;
+  playBtn.disabled = !currentGesture;
+});
+
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+(async () => {
+  statusEl.textContent = 'Starting camera…';
+  await startCamera();
+
+  statusEl.textContent = 'Loading AI hand model…';
+  await loadModel();
+
+  statusEl.textContent = 'Ready! Show your hand, then press Play!';
+  requestAnimationFrame(detectionLoop);
+})();
+</script>
+
+</body>
+</html>
