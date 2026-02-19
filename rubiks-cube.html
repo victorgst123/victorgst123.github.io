@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rubik's Cube Solver</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0d1a;
+      color: #e0e0ff;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #header {
+      text-align: center;
+      padding: 16px 0 8px;
+    }
+    h1 { font-size: 1.5rem; letter-spacing: 2px; color: #a0c4ff; }
+    #status {
+      margin-top: 6px;
+      font-size: 1rem;
+      color: #ffd166;
+      min-height: 1.4em;
+      letter-spacing: 1px;
+    }
+    #move-info {
+      font-size: 0.82rem;
+      color: #6a7fa8;
+      margin-top: 4px;
+      letter-spacing: 1px;
+      min-height: 1.2em;
+    }
+    #canvas-container { flex: 1; width: 100%; }
+    canvas { display: block; }
+    #legend {
+      display: flex;
+      gap: 10px;
+      padding: 8px 16px 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .swatch {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 0.75rem; color: #8899bb;
+    }
+    .swatch-box {
+      width: 14px; height: 14px;
+      border-radius: 3px; border: 1px solid #333;
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Rubik's Cube Solver</h1>
+  <div id="status">Initializing…</div>
+  <div id="move-info"></div>
+</div>
+
+<div id="canvas-container"></div>
+
+<div id="legend">
+  <div class="swatch"><div class="swatch-box" style="background:#ffffff"></div>White (U)</div>
+  <div class="swatch"><div class="swatch-box" style="background:#ffd700"></div>Yellow (D)</div>
+  <div class="swatch"><div class="swatch-box" style="background:#00a020"></div>Green (F)</div>
+  <div class="swatch"><div class="swatch-box" style="background:#0044cc"></div>Blue (B)</div>
+  <div class="swatch"><div class="swatch-box" style="background:#ff6600"></div>Orange (L)</div>
+  <div class="swatch"><div class="swatch-box" style="background:#cc0000"></div>Red (R)</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+
+const ANIM_MS      = 260;   // ms per move
+const SCRAMBLE_N   = 25;    // random moves to scramble
+
+const INNER = 0x111111;
+const FACE_COLOR = {
+  px: 0xcc0000, // +x (right)  → Red
+  nx: 0xff6600, // -x (left)   → Orange
+  py: 0xffffff, // +y (top)    → White
+  ny: 0xffd700, // -y (bottom) → Yellow
+  pz: 0x00a020, // +z (front)  → Green
+  nz: 0x0044cc, // -z (back)   → Blue
+};
+
+// ─── Scene ────────────────────────────────────────────────────────────────────
+
+const container = document.getElementById('canvas-container');
+const renderer  = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+container.appendChild(renderer.domElement);
+
+const scene  = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0d1a);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+camera.position.set(4.5, 4, 5.5);
+camera.lookAt(0, 0, 0);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const sun = new THREE.DirectionalLight(0xffffff, 0.7);
+sun.position.set(6, 10, 8);
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x8888ff, 0.25);
+fill.position.set(-6, -4, -4);
+scene.add(fill);
+
+// All cube meshes live inside `pivot` so we can auto-rotate the whole thing
+const pivot = new THREE.Object3D();
+scene.add(pivot);
+
+function onResize() {
+  const w = container.clientWidth, h = container.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+onResize();
+window.addEventListener('resize', onResize);
+
+// ─── Cube State ───────────────────────────────────────────────────────────────
+//
+// cube[x][y][z]  –  x,y,z ∈ {0,1,2}  (grid indices; 0=neg side, 2=pos side)
+// each cell: { colors: { px,nx,py,ny,pz,nz }, mesh: THREE.Mesh|null }
+//
+// Grid ↔ world:  world = grid - 1   (so grid 0→−1, 1→0, 2→+1)
+
+let cube = [];
+
+function buildMesh(colors, wx, wy, wz) {
+  // BoxGeometry face-material order: +x, -x, +y, -y, +z, -z
+  const mats = ['px','nx','py','ny','pz','nz'].map(
+    k => new THREE.MeshLambertMaterial({ color: colors[k] })
+  );
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.93, 0.93, 0.93), mats);
+  mesh.position.set(wx, wy, wz);
+  return mesh;
+}
+
+function initCube() {
+  while (pivot.children.length) pivot.remove(pivot.children[0]);
+  cube = [];
+  for (let x = 0; x < 3; x++) {
+    cube[x] = [];
+    for (let y = 0; y < 3; y++) {
+      cube[x][y] = [];
+      for (let z = 0; z < 3; z++) {
+        const wx = x-1, wy = y-1, wz = z-1;
+        const isCenter = (wx === 0 && wy === 0 && wz === 0);
+        const colors = {
+          px: wx ===  1 ? FACE_COLOR.px : INNER,
+          nx: wx === -1 ? FACE_COLOR.nx : INNER,
+          py: wy ===  1 ? FACE_COLOR.py : INNER,
+          ny: wy === -1 ? FACE_COLOR.ny : INNER,
+          pz: wz ===  1 ? FACE_COLOR.pz : INNER,
+          nz: wz === -1 ? FACE_COLOR.nz : INNER,
+        };
+        const mesh = isCenter ? null : buildMesh(colors, wx, wy, wz);
+        if (mesh) pivot.add(mesh);
+        cube[x][y][z] = { colors, mesh };
+      }
+    }
+  }
+}
+
+function syncColors({ colors, mesh }) {
+  if (!mesh) return;
+  ['px','nx','py','ny','pz','nz'].forEach((k, i) =>
+    mesh.material[i].color.setHex(colors[k])
+  );
+}
+
+function syncAllPositions() {
+  for (let x = 0; x < 3; x++)
+    for (let y = 0; y < 3; y++)
+      for (let z = 0; z < 3; z++) {
+        const { mesh } = cube[x][y][z];
+        if (mesh) mesh.position.set(x-1, y-1, z-1);
+      }
+}
+
+// ─── Color Rotation Formulas ─────────────────────────────────────────────────
+//
+// Derived from the face-direction-vector transform for each physical rotation.
+// Position transforms (used for both grid remap and direction-vector rotation):
+//
+//  Y+ CW  (x,z)→(z,−x):   dir +x→−z, −z→−x, −x→+z, +z→+x
+//  Y− CCW (x,z)→(−z,x):   dir +x→+z, +z→−x, −x→−z, −z→+x
+//  X+ CW  (y,z)→(−z,y):   dir +y→+z, +z→−y, −y→−z, −z→+y   [R: top→front]
+//  X− CCW (y,z)→(z,−y):   dir +y→−z, −z→−y, −y→+z, +z→+y
+//  Z+ CCW (x,y)→(−y,x):   dir +x→+y, +y→−x, −x→−y, −y→+x   [B from back]
+//  Z− CW  (x,y)→(y,−x):   dir +x→−y, −y→−x, −x→+y, +y→+x   [F from front]
+//
+// "dir A→B" means: old face A's sticker appears on new face B,
+//  i.e. new[B] = old[A].
+
+function rotateColors(c, axis, positive) {
+  const o = { ...c };
+  if (axis === 'y') {
+    if (positive) { // Y+:  +x→−z, −z→−x, −x→+z, +z→+x
+      c.nz=o.px; c.nx=o.nz; c.pz=o.nx; c.px=o.pz;
+    } else {        // Y−:  +x→+z, +z→−x, −x→−z, −z→+x
+      c.pz=o.px; c.nx=o.pz; c.nz=o.nx; c.px=o.nz;
+    }
+  } else if (axis === 'x') {
+    if (positive) { // X+:  +y→+z, +z→−y, −y→−z, −z→+y
+      c.pz=o.py; c.ny=o.pz; c.nz=o.ny; c.py=o.nz;
+    } else {        // X−:  +y→−z, −z→−y, −y→+z, +z→+y
+      c.nz=o.py; c.ny=o.nz; c.pz=o.ny; c.py=o.pz;
+    }
+  } else {          // z axis
+    if (positive) { // Z+:  +x→+y, +y→−x, −x→−y, −y→+x
+      c.py=o.px; c.nx=o.py; c.ny=o.nx; c.px=o.ny;
+    } else {        // Z−:  +x→−y, −y→−x, −x→+y, +y→+x
+      c.ny=o.px; c.nx=o.ny; c.py=o.nx; c.px=o.py;
+    }
+  }
+}
+
+// ─── Layer Rotation (State Update) ───────────────────────────────────────────
+//
+// Grid-space remap (0-indexed, n=3) – inverse of the direction-vector transform
+// used to map the cubie *positions* (opposite direction of how a vector rotates):
+//
+//  Y+: (x,z) → (z, 2−x)    Y−: (x,z) → (2−z, x)
+//  X+: (y,z) → (2−z, y)    X−: (y,z) → (z, 2−y)
+//  Z+: (x,y) → (2−y, x)    Z−: (x,y) → (y, 2−x)
+
+function rotateLayer(axis, layerIdx, positive) {
+  // 1) snapshot the entire layer
+  const saved = [];
+  for (let a = 0; a < 3; a++)
+    for (let b = 0; b < 3; b++) {
+      let x, y, z;
+      if      (axis === 'y') { x = a; y = layerIdx; z = b; }
+      else if (axis === 'x') { x = layerIdx; y = a; z = b; }
+      else                   { x = a; y = b; z = layerIdx; }
+      saved.push({ x, y, z, cubie: cube[x][y][z] });
+    }
+
+  // 2) write each cubie to its new position and update its colors
+  for (const { x, y, z, cubie } of saved) {
+    let nx, ny, nz;
+    if (axis === 'y') {
+      [nx, nz] = positive ? [z, 2-x] : [2-z, x];   ny = y;
+    } else if (axis === 'x') {
+      [ny, nz] = positive ? [2-z, y] : [z, 2-y];   nx = x;
+    } else {
+      [nx, ny] = positive ? [2-y, x] : [y, 2-x];   nz = z;
+    }
+    cube[nx][ny][nz] = cubie;
+    rotateColors(cubie.colors, axis, positive);
+    syncColors(cubie);
+  }
+  syncAllPositions();
+}
+
+// ─── Move Definitions ─────────────────────────────────────────────────────────
+//
+//  U CW: (y, 2, true)   D CW: (y, 0, false)
+//  R CW: (x, 2, true)   L CW: (x, 0, false)
+//  F CW: (z, 2, false)  B CW: (z, 0, true)
+//
+//  Three.js rotation angle = (positive ? +1 : −1) × π/2 on the given axis.
+//  This works because:
+//    rotateY(+π/2) → (x,z)→(z,−x)   [front→right = U CW ✓]
+//    rotateX(+π/2) → (y,z)→(−z,y)   [top→front  = R CW ✓]
+//    rotateZ(−π/2) → (x,y)→(y,−x)   [top→right  = F CW ✓]
+//    rotateZ(+π/2) → (x,y)→(−y,x)   [right→top  = B CW from back ✓]
+
+const ALL_MOVES = [
+  { axis:'y', layerIdx:2, positive:true,  label:"U"  },
+  { axis:'y', layerIdx:2, positive:false, label:"U'" },
+  { axis:'y', layerIdx:0, positive:false, label:"D"  },
+  { axis:'y', layerIdx:0, positive:true,  label:"D'" },
+  { axis:'x', layerIdx:2, positive:true,  label:"R"  },
+  { axis:'x', layerIdx:2, positive:false, label:"R'" },
+  { axis:'x', layerIdx:0, positive:false, label:"L"  },
+  { axis:'x', layerIdx:0, positive:true,  label:"L'" },
+  { axis:'z', layerIdx:2, positive:false, label:"F"  },
+  { axis:'z', layerIdx:2, positive:true,  label:"F'" },
+  { axis:'z', layerIdx:0, positive:true,  label:"B"  },
+  { axis:'z', layerIdx:0, positive:false, label:"B'" },
+];
+
+function inverseOf(m) {
+  return {
+    axis: m.axis, layerIdx: m.layerIdx, positive: !m.positive,
+    label: m.label.endsWith("'") ? m.label.slice(0,-1) : m.label+"'",
+  };
+}
+
+// ─── Animation Queue ──────────────────────────────────────────────────────────
+
+const queue = [];
+let running = false;
+
+const statusEl   = document.getElementById('status');
+const moveInfoEl = document.getElementById('move-info');
+
+function getLayerMeshes(axis, layerIdx) {
+  const out = [];
+  for (let x = 0; x < 3; x++)
+    for (let y = 0; y < 3; y++)
+      for (let z = 0; z < 3; z++) {
+        const match =
+          (axis==='x' && x===layerIdx) ||
+          (axis==='y' && y===layerIdx) ||
+          (axis==='z' && z===layerIdx);
+        if (match && cube[x][y][z].mesh) out.push(cube[x][y][z].mesh);
+      }
+  return out;
+}
+
+function ease(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+function pump() {
+  if (running || queue.length === 0) return;
+
+  const entry = queue.shift();
+
+  // Phase sentinel (no animation)
+  if (entry.phase) {
+    statusEl.textContent = entry.phase;
+    moveInfoEl.textContent = '';
+    pump();
+    return;
+  }
+
+  // Done sentinel
+  if (entry.done) {
+    statusEl.textContent = 'Solved!';
+    moveInfoEl.textContent = '';
+    running = false;
+    return;
+  }
+
+  running = true;
+  const { axis, layerIdx, positive, label } = entry;
+  moveInfoEl.textContent = 'Move: ' + label;
+
+  // Collect this layer's meshes into a temporary group for rotation
+  const group = new THREE.Group();
+  pivot.add(group);
+  const meshes = getLayerMeshes(axis, layerIdx);
+  meshes.forEach(m => { pivot.remove(m); group.add(m); });
+
+  const target = (positive ? 1 : -1) * Math.PI / 2;
+  const t0 = performance.now();
+
+  (function tick() {
+    const t = Math.min((performance.now() - t0) / ANIM_MS, 1);
+    group.rotation[axis] = target * ease(t);
+    if (t < 1) { requestAnimationFrame(tick); return; }
+
+    // Snap, return meshes, update state
+    group.rotation[axis] = target;
+    meshes.forEach(m => { group.remove(m); pivot.add(m); });
+    pivot.remove(group);
+    rotateLayer(axis, layerIdx, positive);
+
+    running = false;
+    pump();
+  })();
+}
+
+function enqueue(entry) { queue.push(entry); pump(); }
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+function start() {
+  initCube();
+
+  // Build a scramble avoiding consecutive same-axis moves
+  const scramble = [];
+  let lastAxis = '';
+  for (let i = 0; i < SCRAMBLE_N; i++) {
+    let m;
+    do { m = ALL_MOVES[Math.floor(Math.random() * ALL_MOVES.length)]; }
+    while (m.axis === lastAxis);
+    scramble.push(m);
+    lastAxis = m.axis;
+  }
+
+  // Enqueue: scramble → phase change → solution
+  statusEl.textContent = 'Scrambling…';
+  moveInfoEl.textContent = '';
+
+  scramble.forEach(m => enqueue(m));
+  enqueue({ phase: 'Solving…' });
+  [...scramble].reverse().map(inverseOf).forEach(m => enqueue(m));
+  enqueue({ done: true });
+}
+
+// ─── Render Loop ──────────────────────────────────────────────────────────────
+
+(function render() {
+  requestAnimationFrame(render);
+  pivot.rotation.y += 0.003;   // gentle auto-spin for visual interest
+  renderer.render(scene, camera);
+})();
+
+start();
+</script>
+</body>
+</html>
