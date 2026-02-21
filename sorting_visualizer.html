@@ -32,13 +32,13 @@
 
     .controls {
       display: flex;
-      align-items: center;
-      gap: 16px;
+      align-items: flex-end;
+      gap: 20px;
       flex-wrap: wrap;
       justify-content: center;
       margin-bottom: 28px;
       background: #16213e;
-      padding: 16px 24px;
+      padding: 18px 28px;
       border-radius: 12px;
       border: 1px solid #2a2a4a;
     }
@@ -47,7 +47,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
     }
 
     .control-group label {
@@ -57,40 +57,100 @@
       letter-spacing: 0.5px;
     }
 
-    .size-buttons {
+    /* ---- Size Slider ---- */
+    .slider-row {
       display: flex;
-      gap: 8px;
+      align-items: center;
+      gap: 10px;
     }
 
-    .size-btn {
-      padding: 8px 20px;
+    .slider-row span {
+      font-size: 0.8rem;
+      color: #999;
+      min-width: 18px;
+      text-align: center;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 150px;
+      height: 6px;
+      background: #3a3a6a;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #7070ee;
+      cursor: pointer;
+      border: 2px solid #aaaaff;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #7070ee;
+      cursor: pointer;
+      border: 2px solid #aaaaff;
+    }
+
+    .size-display {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #c0c0ff;
+      min-width: 28px;
+      text-align: center;
+    }
+
+    /* ---- Speed Buttons ---- */
+    .speed-buttons {
+      display: flex;
+      gap: 6px;
+    }
+
+    .speed-btn {
+      padding: 7px 13px;
       border: 2px solid #3a3a6a;
       background: transparent;
-      color: #ccc;
+      color: #aaa;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 0.95rem;
+      font-size: 0.8rem;
       font-weight: 600;
       transition: all 0.2s;
+      white-space: nowrap;
     }
 
-    .size-btn:hover { border-color: #7070cc; color: #fff; }
+    .speed-btn:hover { border-color: #7070cc; color: #fff; }
 
-    .size-btn.active {
-      background: #4a4aaa;
+    .speed-btn.active {
+      background: #3a3a8a;
       border-color: #7070ee;
       color: #fff;
     }
 
+    .speed-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ---- Action Buttons ---- */
     .btn {
-      padding: 10px 24px;
+      padding: 10px 22px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
       font-size: 0.9rem;
       font-weight: 700;
       transition: all 0.2s;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.4px;
     }
 
     #generateBtn {
@@ -98,31 +158,23 @@
       color: #fff;
     }
     #generateBtn:hover { background: #3a8a5a; }
+    #generateBtn:disabled { background: #333; cursor: not-allowed; opacity: 0.5; }
 
     #sortBtn {
-      background: #6a2a8a;
+      background: #5a2a8a;
       color: #fff;
     }
-    #sortBtn:hover { background: #8a3aaa; }
-    #sortBtn:disabled {
-      background: #444;
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
+    #sortBtn:hover { background: #7a3aaa; }
+    #sortBtn:disabled { background: #333; cursor: not-allowed; opacity: 0.5; }
 
-    .speed-badge {
-      font-size: 0.78rem;
-      padding: 4px 10px;
-      border-radius: 20px;
-      background: #2a2a4a;
-      color: #aaa;
-      border: 1px solid #3a3a6a;
+    #resetBtn {
+      background: #8a3a2a;
+      color: #fff;
     }
+    #resetBtn:hover { background: #aa4a3a; }
+    #resetBtn:disabled { background: #333; cursor: not-allowed; opacity: 0.4; }
 
-    .speed-badge span {
-      font-weight: 700;
-    }
-
+    /* ---- Visualizers ---- */
     .visualizers {
       display: flex;
       gap: 20px;
@@ -162,9 +214,7 @@
       color: #888;
     }
 
-    .stat strong {
-      color: #bbb;
-    }
+    .stat strong { color: #bbb; }
 
     .bar-container {
       width: 100%;
@@ -181,15 +231,14 @@
     .bar {
       flex: 1;
       border-radius: 3px 3px 0 0;
-      transition: height 0.05s;
       position: relative;
     }
 
-    .bar.default  { background: #4a6fa5; }
-    .bar.compare  { background: #e8a838; }
-    .bar.swap     { background: #e84444; }
-    .bar.sorted   { background: #3aa86a; }
-    .bar.pivot    { background: #cc44cc; }
+    .bar.default { background: #4a6fa5; }
+    .bar.compare { background: #e8a838; }
+    .bar.swap    { background: #e84444; }
+    .bar.sorted  { background: #3aa86a; }
+    .bar.pivot   { background: #cc44cc; }
 
     .bar .bar-label {
       position: absolute;
@@ -209,7 +258,8 @@
       text-align: center;
     }
 
-    .status-msg.done { color: #3aa86a; font-weight: 700; }
+    .status-msg.done    { color: #3aa86a; font-weight: 700; }
+    .status-msg.stopped { color: #e84444; font-weight: 700; }
 
     .legend {
       display: flex;
@@ -271,25 +321,39 @@
 <p class="subtitle">Compare Bubble Sort vs Quicksort side by side</p>
 
 <div class="controls">
+
+  <!-- Array Size -->
   <div class="control-group">
-    <label>Array Size</label>
-    <div class="size-buttons">
-      <button class="size-btn active" data-size="15">15</button>
-      <button class="size-btn" data-size="40">40</button>
+    <label>Array Size &mdash; <span id="sizeDisplay" style="color:#c0c0ff;font-weight:700;">10</span></label>
+    <div class="slider-row">
+      <span>3</span>
+      <input type="range" id="sizeSlider" min="3" max="40" value="10">
+      <span>40</span>
     </div>
   </div>
+
+  <!-- Speed -->
   <div class="control-group">
-    <label>Speed Mode</label>
-    <div class="speed-badge" id="speedBadge">Slow &mdash; <span>300ms/step</span> (educational)</div>
+    <label>Speed</label>
+    <div class="speed-buttons">
+      <button class="speed-btn" data-delay="700">Slowest</button>
+      <button class="speed-btn active" data-delay="300">Slow</button>
+      <button class="speed-btn" data-delay="100">Medium</button>
+      <button class="speed-btn" data-delay="30">Fast</button>
+      <button class="speed-btn" data-delay="5">Fastest</button>
+    </div>
   </div>
+
+  <!-- Actions -->
   <div class="control-group">
     <label>&nbsp;</label>
-    <button class="btn" id="generateBtn">&#8635; New Array</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" id="generateBtn">&#8635; New Array</button>
+      <button class="btn" id="sortBtn">&#9654; Sort Both</button>
+      <button class="btn" id="resetBtn" disabled>&#9632; Reset</button>
+    </div>
   </div>
-  <div class="control-group">
-    <label>&nbsp;</label>
-    <button class="btn" id="sortBtn">&#9654; Sort Both</button>
-  </div>
+
 </div>
 
 <div class="visualizers">
@@ -344,30 +408,33 @@
 </div>
 
 <script>
-  let arraySize = 15;
+  let arraySize = 10;
+  let stepDelay = 300;
   let baseArray = [];
   let isSorting = false;
+  let stopRequested = false;
 
-  const SPEEDS = { 15: 300, 40: 40 };
-
-  function getDelay() { return SPEEDS[arraySize]; }
+  // ---- sleep that respects stop flag ----
+  function sleep(ms) {
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => {
+        if (stopRequested) reject(new Error('stopped'));
+        else resolve();
+      }, ms);
+    });
+  }
 
   function randomArray(size) {
-    const max = size; // elements 1..size
-    return Array.from({ length: size }, () => Math.floor(Math.random() * max) + 1);
+    return Array.from({ length: size }, () => Math.floor(Math.random() * size) + 1);
   }
 
   function renderBars(containerId, arr, highlights = {}) {
     const container = document.getElementById(containerId);
-    const maxVal = arraySize;
-    const containerHeight = 252; // px available for bars
-
     container.innerHTML = '';
     arr.forEach((val, i) => {
       const bar = document.createElement('div');
       bar.className = 'bar ' + (highlights[i] || 'default');
-      const heightPct = (val / maxVal) * 100;
-      bar.style.height = heightPct + '%';
+      bar.style.height = ((val / arraySize) * 100) + '%';
 
       if (arraySize <= 15) {
         const lbl = document.createElement('span');
@@ -380,28 +447,33 @@
     });
   }
 
+  function setControlsEnabled(enabled) {
+    document.getElementById('sizeSlider').disabled = !enabled;
+    document.getElementById('generateBtn').disabled = !enabled;
+    document.getElementById('sortBtn').disabled = !enabled;
+    document.getElementById('resetBtn').disabled = enabled;
+    document.querySelectorAll('.speed-btn').forEach(b => b.disabled = !enabled);
+  }
+
   function generateArray() {
-    if (isSorting) return;
     baseArray = randomArray(arraySize);
     renderBars('bubbleBars', baseArray);
     renderBars('quickBars', baseArray);
-    document.getElementById('bubbleStatus').textContent = 'Ready to sort';
-    document.getElementById('bubbleStatus').className = 'status-msg';
-    document.getElementById('quickStatus').textContent = 'Ready to sort';
-    document.getElementById('quickStatus').className = 'status-msg';
+    ['bubbleStatus', 'quickStatus'].forEach(id => {
+      const el = document.getElementById(id);
+      el.textContent = 'Ready to sort';
+      el.className = 'status-msg';
+    });
     document.getElementById('bsComparisons').textContent = '0';
     document.getElementById('bsSwaps').textContent = '0';
     document.getElementById('qsComparisons').textContent = '0';
     document.getElementById('qsSwaps').textContent = '0';
   }
 
-  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
   // ---- BUBBLE SORT ----
   async function bubbleSortVisualize(arr) {
     const a = [...arr];
     const n = a.length;
-    const delay = getDelay();
     let comparisons = 0, swaps = 0;
     const sorted = new Set();
 
@@ -411,13 +483,12 @@
         comparisons++;
         document.getElementById('bsComparisons').textContent = comparisons;
 
-        const highlights = {};
-        sorted.forEach(k => highlights[k] = 'sorted');
-        highlights[j] = 'compare';
-        highlights[j + 1] = 'compare';
-        renderBars('bubbleBars', a, highlights);
+        const h = {};
+        sorted.forEach(k => h[k] = 'sorted');
+        h[j] = 'compare'; h[j + 1] = 'compare';
+        renderBars('bubbleBars', a, h);
         document.getElementById('bubbleStatus').textContent = `Comparing positions ${j} and ${j + 1}`;
-        await sleep(delay);
+        await sleep(stepDelay);
 
         if (a[j] > a[j + 1]) {
           [a[j], a[j + 1]] = [a[j + 1], a[j]];
@@ -427,28 +498,26 @@
 
           const h2 = {};
           sorted.forEach(k => h2[k] = 'sorted');
-          h2[j] = 'swap';
-          h2[j + 1] = 'swap';
+          h2[j] = 'swap'; h2[j + 1] = 'swap';
           renderBars('bubbleBars', a, h2);
-          await sleep(delay);
+          await sleep(stepDelay);
         }
       }
       sorted.add(n - 1 - i);
       if (!swapped) break;
     }
 
-    // mark all sorted
     const allSorted = {};
     for (let k = 0; k < n; k++) allSorted[k] = 'sorted';
     renderBars('bubbleBars', a, allSorted);
-    document.getElementById('bubbleStatus').textContent = 'Sorted!';
-    document.getElementById('bubbleStatus').className = 'status-msg done';
+    const s = document.getElementById('bubbleStatus');
+    s.textContent = 'Sorted!';
+    s.className = 'status-msg done';
   }
 
   // ---- QUICKSORT ----
   async function quickSortVisualize(arr) {
     const a = [...arr];
-    const delay = getDelay();
     let comparisons = 0, swaps = 0;
     const sorted = new Set();
 
@@ -462,12 +531,11 @@
 
         const h = {};
         sorted.forEach(k => h[k] = 'sorted');
-        h[hi] = 'pivot';
-        h[j] = 'compare';
+        h[hi] = 'pivot'; h[j] = 'compare';
         if (i >= lo) h[i] = 'compare';
         renderBars('quickBars', a, h);
         document.getElementById('quickStatus').textContent = `Pivot=${pivotVal}, comparing index ${j}`;
-        await sleep(delay);
+        await sleep(stepDelay);
 
         if (a[j] <= pivotVal) {
           i++;
@@ -477,11 +545,9 @@
 
           const h2 = {};
           sorted.forEach(k => h2[k] = 'sorted');
-          h2[hi] = 'pivot';
-          h2[i] = 'swap';
-          h2[j] = 'swap';
+          h2[hi] = 'pivot'; h2[i] = 'swap'; h2[j] = 'swap';
           renderBars('quickBars', a, h2);
-          await sleep(delay);
+          await sleep(stepDelay);
         }
       }
 
@@ -492,10 +558,7 @@
     }
 
     async function qs(lo, hi) {
-      if (lo >= hi) {
-        if (lo === hi) sorted.add(lo);
-        return;
-      }
+      if (lo >= hi) { if (lo === hi) sorted.add(lo); return; }
       const pi = await partition(lo, hi);
       sorted.add(pi);
       await qs(lo, pi - 1);
@@ -507,42 +570,70 @@
     const allSorted = {};
     for (let k = 0; k < a.length; k++) allSorted[k] = 'sorted';
     renderBars('quickBars', a, allSorted);
-    document.getElementById('quickStatus').textContent = 'Sorted!';
-    document.getElementById('quickStatus').className = 'status-msg done';
+    const s = document.getElementById('quickStatus');
+    s.textContent = 'Sorted!';
+    s.className = 'status-msg done';
   }
 
-  // ---- CONTROLS ----
-  document.querySelectorAll('.size-btn').forEach(btn => {
+  // ---- SIZE SLIDER ----
+  document.getElementById('sizeSlider').addEventListener('input', function () {
+    arraySize = parseInt(this.value);
+    document.getElementById('sizeDisplay').textContent = arraySize;
+    generateArray();
+  });
+
+  // ---- SPEED BUTTONS ----
+  document.querySelectorAll('.speed-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (isSorting) return;
-      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      arraySize = parseInt(btn.dataset.size);
-
-      const delay = SPEEDS[arraySize];
-      const label = arraySize === 15 ? 'Slow' : 'Fast';
-      const note = arraySize === 15 ? '(educational)' : '(speed demo)';
-      document.getElementById('speedBadge').innerHTML =
-        `${label} &mdash; <span>${delay}ms/step</span> ${note}`;
-
-      generateArray();
+      stepDelay = parseInt(btn.dataset.delay);
     });
   });
 
+  // ---- NEW ARRAY ----
   document.getElementById('generateBtn').addEventListener('click', generateArray);
 
+  // ---- SORT BOTH ----
   document.getElementById('sortBtn').addEventListener('click', async () => {
     if (isSorting || baseArray.length === 0) return;
-    isSorting = true;
-    document.getElementById('sortBtn').disabled = true;
 
-    await Promise.all([
-      bubbleSortVisualize(baseArray),
-      quickSortVisualize(baseArray)
-    ]);
+    stopRequested = false;
+    isSorting = true;
+    setControlsEnabled(false);
+
+    try {
+      await Promise.all([
+        bubbleSortVisualize(baseArray),
+        quickSortVisualize(baseArray)
+      ]);
+    } catch (e) {
+      // stopped by reset — status messages already set by resetSort()
+    }
 
     isSorting = false;
-    document.getElementById('sortBtn').disabled = false;
+    setControlsEnabled(true);
+  });
+
+  // ---- RESET ----
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    stopRequested = true;
+
+    // Show stopped status immediately
+    ['bubbleStatus', 'quickStatus'].forEach(id => {
+      const el = document.getElementById(id);
+      el.textContent = 'Stopped — adjust settings and generate a new array';
+      el.className = 'status-msg stopped';
+    });
+
+    // Re-render arrays in default (unsorted) colour
+    renderBars('bubbleBars', baseArray);
+    renderBars('quickBars', baseArray);
+
+    // Controls re-enabled in the sort handler's finally-equivalent after catch
+    // but we also force it here for instant feedback
+    isSorting = false;
+    setControlsEnabled(true);
   });
 
   // Init
