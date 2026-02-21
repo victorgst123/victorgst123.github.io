@@ -332,6 +332,16 @@
     </div>
   </div>
 
+  <!-- Case Type -->
+  <div class="control-group">
+    <label>Input Case</label>
+    <div class="speed-buttons">
+      <button class="speed-btn case-btn" data-case="best">Best</button>
+      <button class="speed-btn case-btn active" data-case="average">Average</button>
+      <button class="speed-btn case-btn" data-case="worst">Worst</button>
+    </div>
+  </div>
+
   <!-- Speed -->
   <div class="control-group">
     <label>Speed</label>
@@ -413,6 +423,7 @@
   let baseArray = [];
   let isSorting = false;
   let stopRequested = false;
+  let caseType = 'average';
 
   // ---- sleep that respects stop flag ----
   function sleep(ms) {
@@ -426,6 +437,12 @@
 
   function randomArray(size) {
     return Array.from({ length: size }, () => Math.floor(Math.random() * size) + 1);
+  }
+
+  function buildArray(size) {
+    if (caseType === 'best')  return Array.from({ length: size }, (_, i) => i + 1);
+    if (caseType === 'worst') return Array.from({ length: size }, (_, i) => size - i);
+    return randomArray(size);
   }
 
   function renderBars(containerId, arr, highlights = {}) {
@@ -456,7 +473,7 @@
   }
 
   function generateArray() {
-    baseArray = randomArray(arraySize);
+    baseArray = buildArray(arraySize);
     renderBars('bubbleBars', baseArray);
     renderBars('quickBars', baseArray);
     ['bubbleStatus', 'quickStatus'].forEach(id => {
@@ -582,10 +599,20 @@
     generateArray();
   });
 
-  // ---- SPEED BUTTONS ----
-  document.querySelectorAll('.speed-btn').forEach(btn => {
+  // ---- CASE BUTTONS ----
+  document.querySelectorAll('.case-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.case-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      caseType = btn.dataset.case;
+      generateArray();
+    });
+  });
+
+  // ---- SPEED BUTTONS ----
+  document.querySelectorAll('.speed-btn:not(.case-btn)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.speed-btn:not(.case-btn)').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       stepDelay = parseInt(btn.dataset.delay);
     });
