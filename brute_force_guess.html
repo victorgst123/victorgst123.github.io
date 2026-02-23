@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Brute-Force Password Guessing Demo (6–12 digits)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #0b1020;
+      color: #e9eefc;
+    }
+    header {
+      padding: 18px 18px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.00));
+    }
+    h1 { font-size: 18px; margin: 0 0 6px; }
+    .sub { opacity: 0.85; font-size: 13px; line-height: 1.35; }
+    main { padding: 16px 18px 22px; max-width: 1100px; margin: 0 auto; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 14px;
+    }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(255,255,255,0.05);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    .card h2 {
+      font-size: 14px;
+      margin: 0 0 10px;
+      opacity: 0.9;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+
+    label { font-size: 12px; opacity: 0.85; display: block; margin-bottom: 6px; }
+    input[type="text"], select {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.22);
+      color: inherit;
+      padding: 10px 12px;
+      outline: none;
+    }
+    input[type="text"]::placeholder { opacity: 0.55; }
+    input[type="text"]:focus, select:focus {
+      border-color: rgba(90,164,255,0.75);
+      box-shadow: 0 0 0 3px rgba(90,164,255,0.18);
+    }
+
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    button {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08);
+      color: inherit;
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 650;
+      letter-spacing: 0.2px;
+      transition: transform 0.03s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    button:hover { background: rgba(255,255,255,0.11); }
+    button:active { transform: translateY(1px); }
+    button.primary {
+      border-color: rgba(90,164,255,0.65);
+      background: rgba(90,164,255,0.18);
+    }
+    button.danger {
+      border-color: rgba(255,90,90,0.55);
+      background: rgba(255,90,90,0.14);
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .status {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    @media (max-width: 520px) { .status { grid-template-columns: 1fr; } }
+
+    .stat {
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.18);
+    }
+    .stat .k { font-size: 11px; opacity: 0.75; }
+    .stat .v { font-size: 16px; margin-top: 4px; font-weight: 750; }
+    .stat .s { font-size: 12px; opacity: 0.78; margin-top: 4px; line-height: 1.25; }
+
+    .viz { display: grid; gap: 12px; }
+    .bigGuess {
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 18px;
+      padding: 14px;
+      background: radial-gradient(1200px 400px at 20% 0%, rgba(90,164,255,0.17), transparent 45%),
+                  radial-gradient(900px 400px at 80% 0%, rgba(255,180,80,0.13), transparent 45%),
+                  rgba(0,0,0,0.18);
+    }
+    .guessLine { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .guessLabel { font-size: 12px; opacity: 0.78; }
+    .guessValue {
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 10px 24px rgba(0,0,0,0.35);
+    }
+    .pulse { animation: pulse 0.30s ease-in-out infinite alternate; }
+    @keyframes pulse {
+      from { filter: brightness(1.0); transform: translateY(0px); }
+      to   { filter: brightness(1.22); transform: translateY(-1px); }
+    }
+
+    .progressWrap {
+      border-radius: 14px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.16);
+    }
+    .bar {
+      height: 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      overflow: hidden;
+    }
+    .bar > div {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(90,164,255,0.85), rgba(120,255,195,0.80));
+      border-radius: 999px;
+      transition: width 0.12s linear;
+    }
+    .barMeta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      opacity: 0.82;
+      margin-top: 8px;
+      font-variant-numeric: tabular-nums;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .log {
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.18);
+      padding: 10px 12px;
+      height: 220px;
+      overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .log .dim { opacity: 0.7; }
+    .log .ok { color: #7CFFB2; font-weight: 700; }
+    .log .warn { color: #FFD27C; font-weight: 700; }
+
+    .hint { font-size: 12px; opacity: 0.82; line-height: 1.35; margin-top: 8px; }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.07);
+      font-size: 11px;
+      opacity: 0.9;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    .footer { margin-top: 14px; font-size: 12px; opacity: 0.75; line-height: 1.35; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Brute-Force Password Guessing (Numbers Only, 6–12 Digits)</h1>
+    <div class="sub">
+      This demo is <b>time-based</b>: it advances by <span class="pill">rate × elapsed time</span> so the animation duration
+      matches the selected “Estimate real-world rate” (without looping billions of times).
+    </div>
+  </header>
+
+  <main>
+    <div class="grid">
+      <section class="card">
+        <h2>Setup</h2>
+
+        <div class="row">
+          <div>
+            <label for="pw">Password (numbers only, 6–12 digits)</label>
+            <input id="pw" type="text" inputmode="numeric" autocomplete="off"
+                   placeholder="e.g., 042069 or 123456789012" maxlength="12" />
+            <div class="hint">
+              Tip: <span class="pill">000000</span> cracks fast; <span class="pill">999999999999</span> cracks last.
+            </div>
+          </div>
+
+          <div>
+            <label for="realRate">Estimate real-world rate</label>
+            <select id="realRate">
+              <option value="1000">1,000 guesses/sec (slow script)</option>
+              <option value="100000">100,000 guesses/sec (fast CPU)</option>
+              <option value="10000000">10,000,000 guesses/sec (GPU-ish)</option>
+              <option value="1000000000">1,000,000,000 guesses/sec (big rig)</option>
+            </select>
+            <div class="hint"><span class="pill" id="realRateLabel">Estimates</span></div>
+          </div>
+        </div>
+
+        <div class="btns">
+          <button class="primary" id="startBtn">▶ Start</button>
+          <button id="pauseBtn" disabled>⏸ Pause</button>
+          <button id="stepBtn" disabled>⏭ Step</button>
+          <button class="danger" id="resetBtn">↺ Reset</button>
+          <button id="randomBtn">🎲 Random Password</button>
+        </div>
+
+        <div class="status">
+          <div class="stat">
+            <div class="k">Search space</div>
+            <div class="v" id="space">—</div>
+            <div class="s" id="spaceNote">Enter a 6–12 digit number.</div>
+          </div>
+          <div class="stat">
+            <div class="k">Estimated time (real-world)</div>
+            <div class="v" id="estTime">—</div>
+            <div class="s" id="estNote">Shown for <b>this password</b> + avg/worst.</div>
+          </div>
+        </div>
+
+        <div class="footer">
+          Teacher note: This assumes attacker knows the password is <b>numeric</b> and the <b>length</b>.
+          Adding letters/symbols and length explodes the search space.
+        </div>
+      </section>
+
+      <section class="card viz">
+        <h2>Cracking Visualization (Count Up)</h2>
+
+        <div class="bigGuess" id="vizBox">
+          <div class="guessLine">
+            <div class="guessLabel">Current guess:</div>
+            <div class="guessValue" id="guessText">—</div>
+          </div>
+          <div class="hint" id="vizHint" style="margin-top:10px;">
+            Hit <b>Start</b> to begin guessing.
+          </div>
+        </div>
+
+        <div class="progressWrap">
+          <div class="bar"><div id="barFill"></div></div>
+          <div class="barMeta">
+            <div>Guesses tried: <b id="tried">0</b></div>
+            <div>Target index: <b id="targetIndex">—</b></div>
+            <div>Elapsed (demo): <b id="elapsed">0.00s</b></div>
+          </div>
+        </div>
+
+        <div class="log" id="log"></div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function onlyDigits(s) { return /^[0-9]+$/.test(s); }
+    function padLeft(numStr, len) { return numStr.padStart(len, "0"); }
+    function formatBigInt(n) { return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+    function formatNumber(n) { return n.toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+    function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+    function formatDurationSeconds(sec) {
+      if (!isFinite(sec)) return "—";
+      if (sec < 1) return `${sec.toFixed(2)}s`;
+      if (sec < 60) return `${sec.toFixed(1)}s`;
+      const min = sec / 60;
+      if (min < 60) return `${min.toFixed(1)} min`;
+      const hr = min / 60;
+      if (hr < 24) return `${hr.toFixed(1)} hr`;
+      const day = hr / 24;
+      if (day < 365) return `${day.toFixed(1)} days`;
+      const yr = day / 365;
+      if (yr < 100) return `${yr.toFixed(1)} years`;
+      return `${yr.toFixed(0)} years`;
+    }
+
+    function logLine(html) {
+      const log = $("log");
+      const div = document.createElement("div");
+      div.innerHTML = html;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+    function clearLog() { $("log").innerHTML = ""; }
+
+    function pow10BigInt(exp) {
+      let n = 1n;
+      for (let i = 0; i < exp; i++) n *= 10n;
+      return n;
+    }
+
+    // Log less often at higher rates.
+    function computeLogEvery(rate) {
+      if (rate <= 1_000) return 100n;
+      if (rate <= 100_000) return 10_000n;
+      if (rate <= 10_000_000) return 500_000n;
+      return 50_000_000n;
+    }
+
+    // ---------- State ----------
+    let running = false;
+    let paused = false;
+
+    let target = "";
+    let L = 0;
+    let targetIdx = 0n;       // numeric value of password (leading zeros allowed)
+    let space = 0n;           // 10^L
+
+    let current = 0n;         // current guess index
+    let tried = 0n;           // guesses tried = current+1 while running (except at start)
+
+    let startTime = 0;
+    let lastTick = 0;
+    let carry = 0;            // fractional guesses carried over between frames
+    let logEvery = 10_000n;
+
+    function getRealRate() { return Number($("realRate").value); }
+
+    function setButtons(state) {
+      if (state === "idle") {
+        $("startBtn").disabled = false;
+        $("pauseBtn").disabled = true;
+        $("stepBtn").disabled = true;
+      } else if (state === "running") {
+        $("startBtn").disabled = true;
+        $("pauseBtn").disabled = false;
+        $("stepBtn").disabled = true;
+      } else if (state === "paused") {
+        $("startBtn").disabled = true;
+        $("pauseBtn").disabled = false;
+        $("stepBtn").disabled = false;
+      } else {
+        $("startBtn").disabled = false;
+        $("pauseBtn").disabled = true;
+        $("stepBtn").disabled = true;
+      }
+    }
+
+    function setGuessDisplay(guessStr, pulse=false) {
+      const el = $("guessText");
+      el.textContent = guessStr;
+      el.classList.toggle("pulse", pulse);
+    }
+
+    function setVizHint(html) { $("vizHint").innerHTML = html; }
+
+    function guessStringFromIndex(idx) { return padLeft(idx.toString(), L); }
+
+    function updateProgress() {
+      $("tried").textContent = formatBigInt(tried);
+      $("targetIndex").textContent = formatBigInt(targetIdx);
+
+      const elapsed = (performance.now() - startTime) / 1000;
+      $("elapsed").textContent = elapsed.toFixed(2) + "s";
+
+      const pct = Number(tried) / Number(space); // safe up to 1e12
+      $("barFill").style.width = (clamp01(pct) * 100).toFixed(2) + "%";
+    }
+
+    function finish(success) {
+      running = false;
+      paused = false;
+
+      const elapsedSec = (performance.now() - startTime) / 1000;
+      setButtons("done");
+
+      const rate = getRealRate();
+      const expectedForThisPassword = Number(targetIdx + 1n) / rate;
+
+      $("barFill").style.width = "100%";
+
+      if (success) {
+        setGuessDisplay(target, false);
+        setVizHint(`<span class="ok">Password cracked!</span> Found <b>${target}</b> in <b>${elapsedSec.toFixed(2)}s</b> (demo).`);
+
+        logLine(`<span class="ok">✅ MATCH!</span> Password = <b>${target}</b>`);
+        logLine(`<span class="dim">Demo elapsed:</span> <b>${elapsedSec.toFixed(2)}s</b>`);
+        logLine(`<span class="dim">Expected at ${formatNumber(rate)} guesses/sec (this password):</span> <b>${formatDurationSeconds(expectedForThisPassword)}</b>`);
+        logLine(`<span class="dim">Guesses tried:</span> <b>${formatBigInt(tried)}</b>`);
+      } else {
+        setVizHint(`<span class="warn">Finished without a match</span> (unexpected for valid input).`);
+        logLine(`<span class="warn">No match found.</span>`);
+      }
+    }
+
+    function tick(now) {
+      if (!running || paused) return;
+
+      const rate = getRealRate();
+      const dt = (now - lastTick) / 1000;
+      lastTick = now;
+
+      // Time-based advancing:
+      // desiredGuesses = rate * dt + carry
+      const desired = rate * dt + carry;
+      const step = Math.floor(desired);
+      carry = desired - step;
+
+      // step might be 0 on tiny dt; ensure progress
+      const stepN = Math.max(1, step);
+      let stepBI = BigInt(stepN);
+
+      // Compute where we'd land if we advanced stepBI guesses
+      // current is the *index* (0-based). Each guess increments current by 1.
+      // The guess "current" is tried count = current+1 after we've guessed it.
+      const nextIdx = current + stepBI;
+
+      // If we would pass the target in this frame, snap exactly to target.
+      if (targetIdx <= nextIdx) {
+        current = targetIdx;
+        tried = targetIdx + 1n;
+        setGuessDisplay(guessStringFromIndex(current), true);
+        updateProgress();
+        finish(true);
+        return;
+      }
+
+      // Otherwise advance normally
+      current = nextIdx;
+      tried += stepBI;
+
+      // Log at most once per frame, when we cross a logging boundary.
+      if (tried === 1n) {
+        logLine(`<span class="dim">Tried #${formatBigInt(tried)}:</span> ${guessStringFromIndex(current)}`);
+      } else {
+        const prev = tried - stepBI;
+        const prevBucket = prev / logEvery;
+        const currBucket = tried / logEvery;
+        if (currBucket > prevBucket) {
+          logLine(`<span class="dim">Tried #${formatBigInt(tried)}:</span> ${guessStringFromIndex(current)}`);
+        }
+      }
+
+      setGuessDisplay(guessStringFromIndex(current), true);
+      updateProgress();
+      requestAnimationFrame(tick);
+    }
+
+    function updateLabels() {
+      const rate = getRealRate();
+      $("realRateLabel").textContent = `${formatNumber(rate)} guesses/sec`;
+
+      const pw = $("pw").value.trim();
+      if (pw.length >= 6 && pw.length <= 12 && onlyDigits(pw)) {
+        L = pw.length;
+        space = pow10BigInt(L);
+        target = pw;
+        targetIdx = BigInt(pw);
+
+        $("space").textContent = `10^${L} = ${formatBigInt(space)} possibilities`;
+        $("spaceNote").textContent = `Digits only, length fixed at ${L}.`;
+
+        // IMPORTANT: show estimate for THIS password + avg/worst
+        const thisSec = Number(targetIdx + 1n) / rate;
+        const avgSec = Number(space / 2n) / rate;
+        const worstSec = Number(space) / rate;
+
+        $("estTime").textContent = `${formatDurationSeconds(thisSec)} for this password`;
+        $("estNote").textContent =
+          `At ${formatNumber(rate)} guesses/sec: avg ≈ ${formatDurationSeconds(avgSec)} • worst ≈ ${formatDurationSeconds(worstSec)}.`;
+      } else {
+        $("space").textContent = "—";
+        $("estTime").textContent = "—";
+        $("spaceNote").textContent = "Enter a valid 6–12 digit number.";
+        $("estNote").textContent = "Shown for this password + avg/worst.";
+      }
+    }
+
+    function start() {
+      const pw = $("pw").value.trim();
+      if (!(pw.length >= 6 && pw.length <= 12) || !onlyDigits(pw)) {
+        alert("Password must be numbers only, 6 to 12 digits long.");
+        return;
+      }
+
+      target = pw;
+      L = target.length;
+      space = pow10BigInt(L);
+      targetIdx = BigInt(target);
+
+      current = 0n;
+      tried = 0n;
+      carry = 0;
+
+      const rate = getRealRate();
+      logEvery = computeLogEvery(rate);
+
+      clearLog();
+      logLine(`<span class="warn">Starting brute force...</span> Length = <b>${L}</b>, search space = <b>${formatBigInt(space)}</b>`);
+      logLine(`<span class="dim">Pacing exactly at:</span> <b>${formatNumber(rate)}</b> guesses/sec (time-based)`);
+      logLine(`<span class="dim">Auto logging about every:</span> <b>${formatBigInt(logEvery)}</b> guesses`);
+
+      running = true;
+      paused = false;
+
+      startTime = performance.now();
+      lastTick = startTime;
+
+      setButtons("running");
+      $("pauseBtn").textContent = "⏸ Pause";
+      setVizHint(`Cracking... pacing at <b>${formatNumber(rate)}</b> guesses/sec. (Matches the “this password” estimate.)`);
+
+      setGuessDisplay(guessStringFromIndex(current), true);
+      updateProgress();
+      requestAnimationFrame(tick);
+    }
+
+    function togglePause() {
+      if (!running) return;
+      paused = !paused;
+
+      if (paused) {
+        setButtons("paused");
+        $("pauseBtn").textContent = "▶ Resume";
+        setVizHint(`Paused. Use <b>Step</b> to advance one guess.`);
+        logLine(`<span class="warn">⏸ Paused</span> at #${formatBigInt(tried)} tries.`);
+      } else {
+        setButtons("running");
+        $("pauseBtn").textContent = "⏸ Pause";
+        setVizHint(`Cracking... pacing at <b>${formatNumber(getRealRate())}</b> guesses/sec.`);
+        lastTick = performance.now();
+        requestAnimationFrame(tick);
+      }
+    }
+
+    function stepOnce() {
+      if (!running || !paused) return;
+
+      const prev = current;
+      current = current + 1n;
+      tried = tried + 1n;
+
+      if (current >= space) { finish(false); return; }
+
+      setGuessDisplay(guessStringFromIndex(current), true);
+
+      const prevBucket = prev / logEvery;
+      const currBucket = current / logEvery;
+      if (currBucket > prevBucket) {
+        logLine(`<span class="dim">Tried #${formatBigInt(tried)}:</span> ${guessStringFromIndex(current)}`);
+      }
+
+      updateProgress();
+
+      if (current === targetIdx) finish(true);
+    }
+
+    function resetAll() {
+      running = false;
+      paused = false;
+
+      $("barFill").style.width = "0%";
+      $("tried").textContent = "0";
+      $("targetIndex").textContent = "—";
+      $("elapsed").textContent = "0.00s";
+
+      setGuessDisplay("—", false);
+      setVizHint(`Hit <b>Start</b> to begin guessing.`);
+      clearLog();
+      setButtons("idle");
+      updateLabels();
+    }
+
+    function randomPassword() {
+      const len = 6 + Math.floor(Math.random() * 7);
+      let s = "";
+      for (let i = 0; i < len; i++) s += String(Math.floor(Math.random() * 10));
+      $("pw").value = s;
+      updateLabels();
+      logLine(`<span class="dim">Generated random password (shown for demo):</span> <b>${s}</b>`);
+    }
+
+    // ---------- Wire up ----------
+    $("startBtn").addEventListener("click", start);
+    $("pauseBtn").addEventListener("click", togglePause);
+    $("stepBtn").addEventListener("click", stepOnce);
+    $("resetBtn").addEventListener("click", resetAll);
+    $("randomBtn").addEventListener("click", randomPassword);
+
+    $("pw").addEventListener("input", () => {
+      const raw = $("pw").value;
+      const cleaned = raw.replace(/[^\d]/g, "").slice(0, 12);
+      if (cleaned !== raw) $("pw").value = cleaned;
+      updateLabels();
+    });
+
+    $("realRate").addEventListener("change", () => {
+      updateLabels();
+      if (running && !paused) {
+        setVizHint(`Cracking... pacing at <b>${formatNumber(getRealRate())}</b> guesses/sec.`);
+        logLine(`<span class="dim">Rate changed to:</span> <b>${formatNumber(getRealRate())}</b> guesses/sec`);
+      }
+    });
+
+    // init
+    updateLabels();
+    setButtons("idle");
+    clearLog();
+    logLine(`<span class="dim">Ready.</span> Enter a 6–12 digit password and press <b>Start</b>.`);
+  </script>
+</body>
+</html>
