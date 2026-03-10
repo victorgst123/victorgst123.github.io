@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>write() vs fwrite() — Buffered Write Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #ffffff;
+  --surface: #f8f9fb;
+  --surface2: #f0f3f7;
+  --border: #d0d8e4;
+  --border-strong: #b0bccf;
+
+  --write-accent: #9400cc;
+  --write-light: #faf0ff;
+  --write-mid: #e8c0ff;
+
+  --fwrite-accent: #0077aa;
+  --fwrite-light: #f0faff;
+  --fwrite-mid: #b8e4ff;
+
+  --kernel-color: #b05800;
+  --kernel-light: #fff5e0;
+  --kernel-mid: #fde0a0;
+
+  --user-color: #1a7a1a;
+  --user-light: #f0faf0;
+
+  --disk-color: #555577;
+  --disk-light: #f4f4fa;
+
+  --flush-color: #cc4400;
+  --flush-light: #fff3ee;
+  --flush-mid:  #ffd0b0;
+
+  --text: #1a2030;
+  --text-mid: #445566;
+  --text-dim: #8899aa;
+
+  --green: #1a7a1a;
+  --byte-size: 22px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  padding: 28px 16px 60px;
+}
+
+h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(1.1rem, 3vw, 1.6rem);
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+.subtitle {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.15em;
+  margin-bottom: 28px;
+}
+
+/* TABS */
+.tabs {
+  display: flex;
+  max-width: 900px;
+  margin: 0 auto;
+  border-bottom: 2px solid var(--border);
+}
+.tab {
+  flex: 1;
+  padding: 10px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-dim);
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--text); background: var(--surface); }
+.tab.active-write  { color: var(--write-accent);  border-bottom-color: var(--write-accent);  background: var(--write-light); }
+.tab.active-fwrite { color: var(--fwrite-accent); border-bottom-color: var(--fwrite-accent); background: var(--fwrite-light); }
+
+/* SCENE */
+.scene { max-width: 900px; margin: 0 auto; display: none; padding-top: 20px; }
+.scene.active { display: block; }
+
+/* LAYERS */
+.layer {
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 4px;
+  position: relative;
+}
+.layer-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.layer.user-space   { background: var(--user-light);   border-color: #a0d0a0; }
+.layer.user-space   .layer-label { color: var(--user-color); }
+.layer.kernel-space { background: var(--kernel-light); border-color: #f0c060; }
+.layer.kernel-space .layer-label { color: var(--kernel-color); }
+.layer.stdio-layer  { background: var(--fwrite-light); border-color: #80ccee; }
+.layer.stdio-layer  .layer-label { color: var(--fwrite-accent); }
+.layer.disk-layer   { background: var(--disk-light);   border-color: #b0b0cc; }
+.layer.disk-layer   .layer-label { color: var(--disk-color); }
+.layer.flush-layer  { background: var(--flush-light);  border-color: #f0a070; }
+.layer.flush-layer  .layer-label { color: var(--flush-color); }
+
+/* CONNECTOR */
+.connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  position: relative;
+  margin: 0 32px;
+}
+.connector-line {
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+.connector-badge {
+  position: relative;
+  z-index: 1;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1.5px solid;
+  background: white;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+  transform: scale(0.9);
+}
+.connector-badge.show { opacity: 1; transform: scale(1); }
+.connector-badge.syscall-badge { color: var(--kernel-color); border-color: var(--kernel-color); background: var(--kernel-light); }
+.connector-badge.write-badge   { color: var(--write-accent);  border-color: var(--write-accent);  background: var(--write-light); }
+.connector-badge.buf-badge     { color: var(--fwrite-accent); border-color: var(--fwrite-accent); background: var(--fwrite-light); }
+.connector-badge.flush-badge   { color: var(--flush-color);   border-color: var(--flush-color);   background: var(--flush-light); }
+
+/* CODE BLOCK */
+.code-block {
+  background: #1e2430;
+  color: #c8d8e8;
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+.code-block .kw   { color: #ff9955; }
+.code-block .fn   { color: #55bbff; }
+.code-block .fn-w { color: #cc88ff; }
+.code-block .cm   { color: #667788; }
+.code-block .hl   { background: rgba(255,255,100,0.15); border-radius: 2px; padding: 0 2px; }
+
+/* BYTE CELLS */
+.byte-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.byte-row-label {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  min-width: 80px;
+}
+.byte-strip {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+.bc {
+  width: var(--byte-size);
+  height: var(--byte-size);
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: var(--surface2);
+  transition: all 0.1s;
+}
+/* write() states */
+.bc.current-w   { background: #f0d8ff; border-color: var(--write-accent); color: var(--write-accent); }
+.bc.done-w      { background: var(--write-mid);   border-color: var(--write-accent);  color: var(--write-accent); }
+/* fwrite() states */
+.bc.buf-pending { background: var(--fwrite-mid);  border-color: var(--fwrite-accent); color: var(--fwrite-accent); }
+.bc.buf-flushed { background: #b0e8b0; border-color: #2a8a2a; color: #1a5a1a; }
+/* disk */
+.bc.disk-empty  { background: var(--surface2); border-color: var(--border); color: var(--text-dim); }
+.bc.disk-cur    { background: #ffe8a0; border-color: #cc9900; color: #664400; }
+.bc.disk-done-w { background: var(--write-mid);   border-color: var(--write-accent);  color: var(--write-accent); }
+.bc.disk-done-f { background: #b0e8b0; border-color: #2a8a2a; color: #1a5a1a; }
+/* source data */
+.bc.src-pending { background: var(--surface2); border-color: var(--border); color: var(--text-dim); }
+.bc.src-sent    { background: #e0e0e0; border-color: #aaa; color: #888; }
+.bc.src-current { background: #fff0b0; border-color: #cc9900; color: #664400; }
+
+/* VAR BOX */
+.var-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.var-label { font-size: 0.55rem; color: var(--text-dim); }
+.var-cell {
+  width: 32px; height: 32px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  transition: all 0.1s;
+}
+.var-cell.active-w { background: var(--write-light); border-color: var(--write-accent); color: var(--write-accent); }
+.var-cell.active-f { background: var(--fwrite-light); border-color: var(--fwrite-accent); color: var(--fwrite-accent); }
+
+/* KERNEL ROW */
+.kernel-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.k-item { display: flex; flex-direction: column; gap: 2px; }
+.k-item-label { font-size: 0.55rem; color: var(--text-dim); }
+.k-item-val { font-size: 0.78rem; font-weight: 600; color: var(--text); }
+.k-item-val.active { color: var(--kernel-color); }
+.syscall-count-big {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* STDIO BUFFER GRID */
+.stdio-grid {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  background: white;
+  border: 1.5px solid #80ccee;
+  border-radius: 4px;
+  padding: 8px;
+  min-height: 44px;
+}
+
+/* BUFFER FILL METER */
+.fill-meter-wrap {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fill-meter-label { font-size: 0.6rem; color: var(--text-dim); white-space: nowrap; }
+.fill-meter-bg {
+  flex: 1;
+  height: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.fill-meter-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: var(--fwrite-accent);
+  transition: width 0.15s;
+}
+.fill-meter-fill.full { background: var(--flush-color); }
+.fill-meter-val { font-size: 0.6rem; color: var(--fwrite-accent); font-weight: 700; min-width: 36px; }
+
+/* STATS ROW */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+.stat-box {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.stat-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.stat-lbl { font-size: 0.58rem; color: var(--text-dim); letter-spacing: 0.08em; }
+
+/* STATUS BAR */
+.status-bar {
+  margin-top: 12px;
+  min-height: 36px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-mid);
+}
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tag-syscall { background: var(--kernel-mid);  color: var(--kernel-color); }
+.tag-buf     { background: var(--fwrite-mid);  color: var(--fwrite-accent); }
+.tag-flush   { background: var(--flush-mid);   color: var(--flush-color); }
+.tag-user    { background: #d0f0d0;            color: var(--user-color); }
+.tag-done    { background: #d0f0d0;            color: var(--green); }
+
+/* CONTROLS */
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 9px 18px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.12s;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-write  { background: var(--write-accent);  color: white; }
+.btn-write:not(:disabled):hover  { background: #7a00aa; box-shadow: 0 2px 8px rgba(148,0,204,0.3); }
+.btn-fwrite { background: var(--fwrite-accent); color: white; }
+.btn-fwrite:not(:disabled):hover { background: #005588; box-shadow: 0 2px 8px rgba(0,119,170,0.3); }
+.btn-flush  { background: var(--flush-color);   color: white; }
+.btn-flush:not(:disabled):hover  { background: #aa3300; box-shadow: 0 2px 8px rgba(204,68,0,0.3); }
+.btn-reset  { background: var(--surface2); color: var(--text-mid); border: 1.5px solid var(--border); }
+.btn-reset:hover { background: var(--surface); border-color: var(--border-strong); }
+
+/* PROGRESS */
+.prog-wrap { margin-top: 8px; }
+.prog-label { font-size: 0.58rem; color: var(--text-dim); margin-bottom: 3px; }
+.prog-bg { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+.prog-fill { height: 100%; border-radius: 3px; transition: width 0.1s; }
+.prog-fill.w-fill  { background: var(--write-accent); }
+.prog-fill.fw-fill { background: var(--fwrite-accent); }
+
+/* COMPARE */
+.compare-panel {
+  max-width: 900px;
+  margin: 20px auto 0;
+  background: var(--surface);
+  border: 2px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 18px;
+  display: none;
+}
+.compare-panel.visible { display: block; }
+.compare-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 0.9rem;
+  margin-bottom: 14px;
+  color: var(--text);
+}
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.compare-col h3 { font-size: 0.72rem; margin-bottom: 10px; }
+.compare-col.w-col  h3 { color: var(--write-accent); }
+.compare-col.fw-col h3 { color: var(--fwrite-accent); }
+.cmp-row {
+  display: flex; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding: 5px 0;
+  font-size: 0.68rem;
+}
+.cmp-row .lbl   { color: var(--text-dim); }
+.cmp-row .val-w { color: var(--write-accent);  font-weight: 700; }
+.cmp-row .val-f { color: var(--fwrite-accent); font-weight: 700; }
+.cmp-row .val-g { color: var(--green);         font-weight: 700; }
+
+/* note box */
+.note-box {
+  background: #fffbe8;
+  border: 1.5px solid #e8d060;
+  border-radius: 5px;
+  padding: 10px 14px;
+  font-size: 0.7rem;
+  color: #5a4a00;
+  margin-top: 10px;
+  line-height: 1.6;
+}
+.note-box strong { color: #7a5a00; }
+</style>
+</head>
+<body>
+
+<h1>write() vs fwrite() — Buffered Write Visualizer</h1>
+<p class="subtitle">CLICK STEP TO WRITE 1 BYTE · 32-BYTE DATA · 8-BYTE STDIO BUFFER</p>
+
+<div class="tabs">
+  <button class="tab active-write" id="tab-write"  onclick="switchTab('write')">① write() — 1 syscall per byte</button>
+  <button class="tab"              id="tab-fwrite" onclick="switchTab('fwrite')">② fwrite() — stdio buffer (8 B)</button>
+</div>
+
+<!-- ══════════════════════════════ SCENE: write() ══════════════════════════════ -->
+<div class="scene active" id="scene-write">
+
+  <div class="layer user-space">
+    <div class="layer-label">User Space</div>
+    <div class="code-block">
+<span class="kw">char</span> data[32] = <span class="cm">"ABCDEFGH..."</span>;
+<span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 32; i++) {
+&nbsp;&nbsp;<span class="fn-w hl">write(fd, &amp;data[i], 1)</span>; <span class="cm">// 1 syscall per byte!</span>
+}</div>
+    <div class="byte-row">
+      <div class="var-box">
+        <div class="var-label">data[i]</div>
+        <div class="var-cell" id="w-cvar">?</div>
+      </div>
+      <div style="flex:1;min-width:120px;">
+        <div style="font-size:0.6rem;color:var(--text-dim);margin-bottom:4px;">Source data (user buffer):</div>
+        <div class="byte-strip" id="w-src-strip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- user → kernel -->
+  <div class="connector">
+    <div class="connector-line"></div>
+    <div class="connector-badge syscall-badge" id="w-badge-down">⬇ write(fd, &amp;data[i], 1)  [SYSCALL → kernel]</div>
+  </div>
+
+  <div class="layer kernel-space">
+    <div class="layer-label">Kernel Space</div>
+    <div class="kernel-row">
+      <div class="k-item" style="flex:1">
+        <div class="k-item-label">Kernel I/O request</div>
+        <div class="k-item-val" id="w-kreq">—</div>
+      </div>
+      <div class="k-item" style="text-align:center">
+        <div class="k-item-label">Total syscalls</div>
+        <div class="syscall-count-big" style="color:var(--write-accent)" id="w-sc-big">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- kernel → disk -->
+  <div class="connector">
+    <div class="connector-line"></div>
+    <div class="connector-badge write-badge" id="w-badge-up">⬆ returns — 1 byte written to disk</div>
+  </div>
+
+  <div class="layer disk-layer">
+    <div class="layer-label">Disk / File System</div>
+    <div class="byte-row">
+      <div class="byte-row-label">file[0..31]:</div>
+      <div class="byte-strip" id="w-disk-strip"></div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--write-accent)" id="w-stat-sc">0</div>
+      <div class="stat-lbl">SYSCALLS</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--text)" id="w-stat-bytes">0 / 32</div>
+      <div class="stat-lbl">BYTES WRITTEN</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--write-accent)" id="w-stat-ratio">—</div>
+      <div class="stat-lbl">SYSCALLS / BYTE</div>
+    </div>
+  </div>
+
+  <div class="prog-wrap">
+    <div class="prog-label">Progress</div>
+    <div class="prog-bg"><div class="prog-fill w-fill" id="w-prog-bar" style="width:0%"></div></div>
+  </div>
+
+  <div class="status-bar" id="w-status">
+    <span class="tag tag-user">READY</span> Press "Write 1 Byte" to step. Every byte goes straight to the kernel.
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-write" id="w-step-btn" onclick="stepWrite()">▶ Write 1 Byte</button>
+    <button class="btn btn-reset" onclick="resetWrite()">↺ Reset</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ SCENE: fwrite() ══════════════════════════════ -->
+<div class="scene" id="scene-fwrite">
+
+  <div class="layer user-space">
+    <div class="layer-label">User Space</div>
+    <div class="code-block">
+<span class="kw">char</span> data[32] = <span class="cm">"ABCDEFGH..."</span>;
+<span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 32; i++) {
+&nbsp;&nbsp;<span class="fn hl">fwrite(&amp;data[i], 1, 1, fp)</span>; <span class="cm">// goes to stdio buffer first!</span>
+}
+<span class="fn">fflush(fp)</span>; <span class="cm">// or fclose() — forces final flush</span></div>
+
+    <div class="byte-row" style="margin-bottom:12px;">
+      <div class="var-box">
+        <div class="var-label">data[i]</div>
+        <div class="var-cell" id="fw-cvar">?</div>
+      </div>
+      <div style="flex:1;min-width:120px;">
+        <div style="font-size:0.6rem;color:var(--text-dim);margin-bottom:4px;">Source data (user buffer):</div>
+        <div class="byte-strip" id="fw-src-strip"></div>
+      </div>
+    </div>
+
+    <!-- stdio buffer lives inside user space -->
+    <div class="layer stdio-layer" style="margin-top:4px;">
+      <div class="layer-label">stdio Buffer &nbsp;(FILE* internal · buffer size: 8 bytes)</div>
+      <div style="font-size:0.6rem;color:var(--text-dim);margin-bottom:6px;">
+        buf_pos: <strong id="fw-buf-pos" style="color:var(--fwrite-accent)">0</strong> &nbsp;/&nbsp; 8 bytes capacity
+      </div>
+      <div class="stdio-grid" id="fw-stdio-grid"></div>
+      <div class="fill-meter-wrap">
+        <span class="fill-meter-label">Buffer fill:</span>
+        <div class="fill-meter-bg"><div class="fill-meter-fill" id="fw-fill-bar" style="width:0%"></div></div>
+        <span class="fill-meter-val" id="fw-fill-val">0 / 8</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- user → kernel (only on flush) -->
+  <div class="connector">
+    <div class="connector-line"></div>
+    <div class="connector-badge syscall-badge" id="fw-badge-syscall">⬇ write(fd, stdio_buf, 8)  [SYSCALL — buffer full → kernel]</div>
+    <div class="connector-badge flush-badge"   id="fw-badge-flush">⬇ write(fd, stdio_buf, N)  [SYSCALL — fflush() → kernel]</div>
+    <div class="connector-badge buf-badge"     id="fw-badge-buf">✎ buffered in stdio — no syscall yet</div>
+  </div>
+
+  <div class="layer kernel-space">
+    <div class="layer-label">Kernel Space</div>
+    <div class="kernel-row">
+      <div class="k-item" style="flex:1">
+        <div class="k-item-label">Kernel I/O request</div>
+        <div class="k-item-val" id="fw-kreq">—</div>
+      </div>
+      <div class="k-item" style="text-align:center">
+        <div class="k-item-label">Total syscalls</div>
+        <div class="syscall-count-big" style="color:var(--kernel-color)" id="fw-sc-big">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- kernel → disk -->
+  <div class="connector">
+    <div class="connector-line"></div>
+  </div>
+
+  <div class="layer disk-layer">
+    <div class="layer-label">Disk / File System</div>
+    <div class="byte-row">
+      <div class="byte-row-label">file[0..31]:</div>
+      <div class="byte-strip" id="fw-disk-strip"></div>
+    </div>
+    <div class="note-box" id="fw-disk-note" style="display:none;">
+      ⚠ <strong>Data not yet on disk!</strong> Bytes are safely in the stdio buffer (user space) but not written to disk until a flush occurs. If the process crashes before fflush() / fclose(), these bytes are <strong>lost</strong>.
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--kernel-color)" id="fw-stat-sc">0</div>
+      <div class="stat-lbl">SYSCALLS</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--text)" id="fw-stat-bytes">0 / 32</div>
+      <div class="stat-lbl">BYTES WRITTEN</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--fwrite-accent)" id="fw-stat-buf">0</div>
+      <div class="stat-lbl">BYTES BUFFERED</div>
+    </div>
+  </div>
+
+  <div class="prog-wrap">
+    <div class="prog-label">fwrite() calls</div>
+    <div class="prog-bg"><div class="prog-fill fw-fill" id="fw-prog-bar" style="width:0%"></div></div>
+  </div>
+
+  <div class="status-bar" id="fw-status">
+    <span class="tag tag-user">READY</span> Press "Write 1 Byte" to step. Watch the buffer fill up — syscall only fires when it's full or flushed.
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-fwrite" id="fw-step-btn"  onclick="stepFwrite()">▶ Write 1 Byte</button>
+    <button class="btn btn-flush"  id="fw-flush-btn" onclick="flushFwrite()" disabled>⚡ fflush() / fclose()</button>
+    <button class="btn btn-reset"  onclick="resetFwrite()">↺ Reset</button>
+  </div>
+</div>
+
+<!-- COMPARISON -->
+<div class="compare-panel" id="compare-panel">
+  <div class="compare-title">📊 Side-by-Side Results</div>
+  <div class="compare-grid">
+    <div class="compare-col w-col">
+      <h3>write() — unbuffered</h3>
+      <div class="cmp-row"><span class="lbl">Syscalls fired</span><span class="val-w" id="cmp-w-sc">—</span></div>
+      <div class="cmp-row"><span class="lbl">Cost per byte</span><span class="val-w">1 syscall</span></div>
+      <div class="cmp-row"><span class="lbl">Data on disk after each call</span><span class="val-w">✓ yes</span></div>
+    </div>
+    <div class="compare-col fw-col">
+      <h3>fwrite() — stdio buffered</h3>
+      <div class="cmp-row"><span class="lbl">Syscalls fired</span><span class="val-f" id="cmp-fw-sc">—</span></div>
+      <div class="cmp-row"><span class="lbl">Flushes triggered</span><span class="val-g" id="cmp-fw-fl">—</span></div>
+      <div class="cmp-row"><span class="lbl">Speedup ratio</span><span class="val-g" id="cmp-ratio">—</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FILE_SIZE = 32;
+const BUF_SIZE  = 8;
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+function ch(i) { return String.fromCharCode(65 + (i % 26)); }
+
+function makeSrcStrip(containerId, prefix) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  for (let i = 0; i < FILE_SIZE; i++) {
+    const d = document.createElement('div');
+    d.className = 'bc src-pending';
+    d.id = `${prefix}-${i}`;
+    d.textContent = ch(i);
+    c.appendChild(d);
+  }
+}
+
+function makeDiskStrip(containerId, prefix) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  for (let i = 0; i < FILE_SIZE; i++) {
+    const d = document.createElement('div');
+    d.className = 'bc disk-empty';
+    d.id = `${prefix}-${i}`;
+    d.textContent = '·';
+    c.appendChild(d);
+  }
+}
+
+function showBadge(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.parentElement.querySelectorAll('.connector-badge').forEach(b => b.classList.remove('show'));
+  el.classList.add('show');
+}
+function hideBadges(id) {
+  const el = document.getElementById(id);
+  if (el) el.parentElement.querySelectorAll('.connector-badge').forEach(b => b.classList.remove('show'));
+}
+
+function setStatus(scene, tagClass, tagText, msg) {
+  document.getElementById(`${scene}-status`).innerHTML =
+    `<span class="tag ${tagClass}">${tagText}</span> ${msg}`;
+}
+
+// ── TAB ───────────────────────────────────────────────────────────────────────
+function switchTab(t) {
+  document.getElementById('tab-write').className  = 'tab';
+  document.getElementById('tab-fwrite').className = 'tab';
+  document.getElementById('scene-write').classList.remove('active');
+  document.getElementById('scene-fwrite').classList.remove('active');
+  if (t === 'write') {
+    document.getElementById('tab-write').className = 'tab active-write';
+    document.getElementById('scene-write').classList.add('active');
+  } else {
+    document.getElementById('tab-fwrite').className = 'tab active-fwrite';
+    document.getElementById('scene-fwrite').classList.add('active');
+  }
+}
+
+// ── write() ───────────────────────────────────────────────────────────────────
+let wPos = 0, wSyscalls = 0;
+
+function resetWrite() {
+  wPos = 0; wSyscalls = 0;
+  document.getElementById('w-cvar').textContent = '?';
+  document.getElementById('w-cvar').className = 'var-cell';
+  document.getElementById('w-sc-big').textContent = '0';
+  document.getElementById('w-stat-sc').textContent = '0';
+  document.getElementById('w-stat-bytes').textContent = '0 / 32';
+  document.getElementById('w-stat-ratio').textContent = '—';
+  document.getElementById('w-kreq').textContent = '—';
+  document.getElementById('w-kreq').className = 'k-item-val';
+  document.getElementById('w-prog-bar').style.width = '0%';
+  document.getElementById('w-step-btn').disabled = false;
+  hideBadges('w-badge-down');
+  makeSrcStrip('w-src-strip', 'ws');
+  makeDiskStrip('w-disk-strip', 'wd');
+  setStatus('w', 'tag-user', 'READY', 'Press "Write 1 Byte" to step. Every byte goes straight to the kernel.');
+}
+
+function stepWrite() {
+  if (wPos >= FILE_SIZE) return;
+  const c = ch(wPos);
+
+  // Highlight source byte being sent
+  const srcEl = document.getElementById(`ws-${wPos}`);
+  if (srcEl) srcEl.className = 'bc src-current';
+
+  // Show var
+  const cvar = document.getElementById('w-cvar');
+  cvar.textContent = c;
+  cvar.className = 'var-cell active-w';
+
+  // Syscall down
+  showBadge('w-badge-down');
+  document.getElementById('w-kreq').textContent = `write(fd, &data[${wPos}], 1)  byte='${c}'`;
+  document.getElementById('w-kreq').className = 'k-item-val active';
+
+  // Disk receives byte
+  showBadge('w-badge-up');
+  document.getElementById('w-kreq').className = 'k-item-val';
+  hideBadges('w-badge-up');
+
+  const diskEl = document.getElementById(`wd-${wPos}`);
+  if (diskEl) { diskEl.className = 'bc disk-done-w'; diskEl.textContent = c; }
+  if (srcEl)  srcEl.className = 'bc src-sent';
+
+  wPos++; wSyscalls++;
+
+  document.getElementById('w-sc-big').textContent = wSyscalls;
+  document.getElementById('w-stat-sc').textContent = wSyscalls;
+  document.getElementById('w-stat-bytes').textContent = `${wPos} / ${FILE_SIZE}`;
+  document.getElementById('w-stat-ratio').textContent = '1 : 1';
+  document.getElementById('w-prog-bar').style.width = `${(wPos / FILE_SIZE) * 100}%`;
+
+  setStatus('w', 'tag-syscall', 'SYSCALL',
+    `write(fd, &data[${wPos-1}], 1) → '${c}' written to disk immediately  [syscall #${wSyscalls}]`);
+
+  if (wPos >= FILE_SIZE) {
+    document.getElementById('w-step-btn').disabled = true;
+    document.getElementById('w-cvar').className = 'var-cell';
+    document.getElementById('w-kreq').textContent = '—';
+    setStatus('w', 'tag-done', 'DONE',
+      `All ${FILE_SIZE} bytes written. Total syscalls: ${wSyscalls}. Every single byte cost 1 context switch.`);
+    document.getElementById('cmp-w-sc').textContent = wSyscalls;
+    maybeCompare();
+  }
+}
+
+// ── fwrite() ──────────────────────────────────────────────────────────────────
+let fwPos = 0, fwSyscalls = 0, fwBufPos = 0, fwFlushes = 0;
+// buf holds chars currently in stdio buffer
+let fwBuf = [];
+
+function resetFwrite() {
+  fwPos = 0; fwSyscalls = 0; fwBufPos = 0; fwFlushes = 0;
+  fwBuf = [];
+  document.getElementById('fw-cvar').textContent = '?';
+  document.getElementById('fw-cvar').className = 'var-cell';
+  document.getElementById('fw-sc-big').textContent = '0';
+  document.getElementById('fw-stat-sc').textContent = '0';
+  document.getElementById('fw-stat-bytes').textContent = '0 / 32';
+  document.getElementById('fw-stat-buf').textContent = '0';
+  document.getElementById('fw-kreq').textContent = '—';
+  document.getElementById('fw-kreq').className = 'k-item-val';
+  document.getElementById('fw-buf-pos').textContent = '0';
+  document.getElementById('fw-prog-bar').style.width = '0%';
+  document.getElementById('fw-fill-bar').style.width = '0%';
+  document.getElementById('fw-fill-bar').className = 'fill-meter-fill';
+  document.getElementById('fw-fill-val').textContent = '0 / 8';
+  document.getElementById('fw-step-btn').disabled = false;
+  document.getElementById('fw-flush-btn').disabled = true;
+  document.getElementById('fw-disk-note').style.display = 'none';
+  hideBadges('fw-badge-syscall');
+  makeSrcStrip('fw-src-strip', 'fws');
+  makeDiskStrip('fw-disk-strip', 'fwd');
+  buildStdioGrid();
+  setStatus('fw', 'tag-user', 'READY',
+    'Press "Write 1 Byte". Watch the buffer fill up — syscall only fires when full or flushed.');
+}
+
+function buildStdioGrid() {
+  const g = document.getElementById('fw-stdio-grid');
+  g.innerHTML = '';
+  for (let i = 0; i < BUF_SIZE; i++) {
+    const d = document.createElement('div');
+    d.className = 'bc';
+    d.id = `sb-${i}`;
+    d.textContent = '·';
+    g.appendChild(d);
+  }
+}
+
+function updateFillMeter() {
+  const pct = (fwBufPos / BUF_SIZE) * 100;
+  const bar = document.getElementById('fw-fill-bar');
+  bar.style.width = `${pct}%`;
+  bar.className = 'fill-meter-fill' + (fwBufPos === BUF_SIZE ? ' full' : '');
+  document.getElementById('fw-fill-val').textContent = `${fwBufPos} / ${BUF_SIZE}`;
+}
+
+function doFlush(reason) {
+  if (fwBufPos === 0) return;
+
+  const count = fwBufPos;
+  const label = reason === 'full' ? 'Buffer full' : 'fflush()/fclose()';
+
+  // Show syscall badge
+  showBadge(reason === 'full' ? 'fw-badge-syscall' : 'fw-badge-flush');
+  document.getElementById('fw-kreq').textContent =
+    `write(fd, stdio_buf, ${count})  [${label}]`;
+  document.getElementById('fw-kreq').className = 'k-item-val active';
+
+  // Write all buffered bytes to disk
+  const diskStart = fwSyscalls * BUF_SIZE; // approximate disk offset
+  for (let i = 0; i < count; i++) {
+    const diskIdx = (fwFlushes * BUF_SIZE) + i;
+    const diskEl = document.getElementById(`fwd-${diskIdx}`);
+    if (diskEl) { diskEl.className = 'bc disk-done-f'; diskEl.textContent = fwBuf[i]; }
+    // mark buffer cell as flushed
+    const sbEl = document.getElementById(`sb-${i}`);
+    if (sbEl) { sbEl.className = 'bc buf-flushed'; }
+  }
+
+  fwSyscalls++;
+  fwFlushes++;
+  fwBuf = [];
+
+  // Clear buffer cells
+  for (let i = 0; i < BUF_SIZE; i++) {
+    const sbEl = document.getElementById(`sb-${i}`);
+    if (sbEl) { setTimeout(() => { sbEl.className = 'bc'; sbEl.textContent = '·'; }, 400); }
+  }
+  fwBufPos = 0;
+  updateFillMeter();
+
+  document.getElementById('fw-sc-big').textContent = fwSyscalls;
+  document.getElementById('fw-stat-sc').textContent = fwSyscalls;
+  document.getElementById('fw-stat-buf').textContent = fwBufPos;
+  document.getElementById('fw-buf-pos').textContent = fwBufPos;
+  document.getElementById('fw-kreq').className = 'k-item-val';
+
+  setTimeout(() => hideBadges('fw-badge-syscall'), 600);
+
+  // Hide warning note once data is on disk
+  document.getElementById('fw-disk-note').style.display = 'none';
+
+  if (fwPos >= FILE_SIZE) {
+    document.getElementById('fw-flush-btn').disabled = true;
+    document.getElementById('fw-step-btn').disabled = true;
+    document.getElementById('fw-cvar').className = 'var-cell';
+    setStatus('fw', 'tag-done', 'DONE',
+      `All ${FILE_SIZE} bytes on disk. Syscalls: ${fwSyscalls}. Each syscall wrote ${BUF_SIZE} bytes at once.`);
+    document.getElementById('cmp-fw-sc').textContent = fwSyscalls;
+    document.getElementById('cmp-fw-fl').textContent = fwFlushes;
+    maybeCompare();
+  } else {
+    setStatus('fw', 'tag-flush', reason === 'full' ? 'AUTO FLUSH' : 'FFLUSH',
+      `write(fd, stdio_buf, ${count}) → ${count} bytes flushed to disk in 1 syscall  [syscall #${fwSyscalls}]`);
+  }
+}
+
+function stepFwrite() {
+  if (fwPos >= FILE_SIZE) return;
+  const c = ch(fwPos);
+
+  // Highlight source byte
+  const srcEl = document.getElementById(`fws-${fwPos}`);
+  if (srcEl) srcEl.className = 'bc src-current';
+
+  const cvar = document.getElementById('fw-cvar');
+  cvar.textContent = c;
+  cvar.className = 'var-cell active-f';
+
+  // Place byte into stdio buffer
+  fwBuf.push(c);
+  const sbEl = document.getElementById(`sb-${fwBufPos}`);
+  if (sbEl) { sbEl.className = 'bc buf-pending'; sbEl.textContent = c; }
+  fwBufPos++;
+  if (srcEl) srcEl.className = 'bc src-sent';
+
+  fwPos++;
+  document.getElementById('fw-buf-pos').textContent = fwBufPos;
+  document.getElementById('fw-stat-bytes').textContent = `${fwPos} / ${FILE_SIZE}`;
+  document.getElementById('fw-prog-bar').style.width = `${(fwPos / FILE_SIZE) * 100}%`;
+  document.getElementById('fw-stat-buf').textContent = fwBufPos;
+  updateFillMeter();
+
+  // Show warning: data in buffer, not yet on disk
+  if (fwBufPos > 0 && fwBufPos < BUF_SIZE) {
+    document.getElementById('fw-disk-note').style.display = 'block';
+  }
+
+  if (fwBufPos === BUF_SIZE) {
+    // AUTO FLUSH — buffer full
+    doFlush('full');
+    document.getElementById('fw-flush-btn').disabled = fwPos >= FILE_SIZE;
+  } else {
+    showBadge('fw-badge-buf');
+    setStatus('fw', 'tag-buf', 'BUFFERED',
+      `'${c}' written to stdio buffer [pos ${fwBufPos-1}]. Buffer: ${fwBufPos}/${BUF_SIZE} bytes. No syscall.`);
+    document.getElementById('fw-flush-btn').disabled = false;
+  }
+}
+
+function flushFwrite() {
+  if (fwBufPos === 0) return;
+  doFlush('manual');
+}
+
+// ── COMPARE ───────────────────────────────────────────────────────────────────
+function maybeCompare() {
+  const w  = document.getElementById('cmp-w-sc').textContent;
+  const fw = document.getElementById('cmp-fw-sc').textContent;
+  if (w !== '—' && fw !== '—') {
+    const ratio = (+w / +fw).toFixed(1);
+    document.getElementById('cmp-ratio').textContent = `${ratio}×`;
+    document.getElementById('compare-panel').classList.add('visible');
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+resetWrite();
+resetFwrite();
+</script>
+</body>
+</html>
