@@ -19,15 +19,12 @@
   h1 { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 6px; color: #2c2c2a; }
   .subtitle { text-align: center; font-size: 13px; color: #888780; margin-bottom: 24px; }
 
-  .diagram { position: relative; }
-
   .region {
     border: 1.5px dashed #d3d1c7;
     border-radius: 14px;
     padding: 20px 24px 24px;
     background: #fff;
     position: relative;
-    margin-bottom: 0;
   }
   .region-label {
     position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
@@ -57,44 +54,46 @@
   .writer .syscall-badge { background: rgba(93,202,165,0.25); border: 1px solid #0f6e56; color: #085041; }
   .reader .syscall-badge { background: rgba(175,169,236,0.25); border: 1px solid #534ab7; color: #3c3489; }
 
-  /* Arrows between user and kernel space */
   .arrows-row {
     display: flex; justify-content: center; gap: 24px;
-    height: 48px; position: relative;
+    height: 48px;
   }
   .arrow-col {
-    flex: 1; max-width: 320px; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; position: relative;
+    flex: 1; max-width: 320px; display: flex;
+    align-items: center; justify-content: center;
   }
-  .arrow-col svg { overflow: visible; }
 
-  /* Pipe buffer */
   .pipe-section { margin-top: 10px; }
   .pipe-label { text-align: center; font-size: 13px; color: #5f5e5a; font-weight: 500; margin-bottom: 10px; }
   .buffer-track {
-    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
-    padding: 14px 12px; border-radius: 10px;
+    display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;
+    padding: 14px 10px; border-radius: 10px;
     background: linear-gradient(90deg, rgba(29,158,117,0.08), rgba(127,119,221,0.08));
     border: 1px solid #d3d1c7;
+    min-height: 68px;
   }
   .slot {
-    width: 64px; height: 52px; border-radius: 7px;
+    width: 38px; height: 42px; border-radius: 5px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 20px; font-weight: 600; transition: all 0.3s ease;
+    font-size: 15px; font-weight: 600; transition: all 0.25s ease;
     border: 1px solid #d3d1c7; background: #fafaf8; color: transparent;
+    font-family: 'SF Mono', 'Fira Code', monospace;
   }
   .slot.filled {
     background: #5DCAA5; border-color: #0F6E56; color: #04342C;
-    animation: pulse 2s ease-in-out infinite;
   }
-  @keyframes pulse { 0%,100% { opacity: .75; } 50% { opacity: 1; } }
+  .slot.fresh {
+    animation: popIn 0.3s ease-out;
+  }
+  @keyframes popIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
 
   .flow-hint {
     text-align: center; font-size: 11px; color: #888780; margin-top: 8px;
   }
-  .flow-hint span { letter-spacing: 1px; }
 
-  /* FD badges */
   .fd-row { display: flex; justify-content: space-between; margin-top: 16px; padding: 0 20px; }
   .fd-badge { text-align: center; }
   .fd-pill {
@@ -107,7 +106,6 @@
   .fd-badge.write .fd-label { color: #0f6e56; }
   .fd-badge.read  .fd-label { color: #534ab7; }
 
-  /* Controls */
   .controls {
     display: flex; gap: 10px; align-items: center; justify-content: center;
     margin-top: 24px; flex-wrap: wrap;
@@ -131,26 +129,45 @@
     font-size: 13px; color: #5f5e5a; min-width: 200px; text-align: center;
   }
 
-  /* Log */
+  .input-row {
+    display: flex; gap: 10px; align-items: center; justify-content: center;
+    margin-top: 12px; flex-wrap: wrap;
+  }
+  .input-row label { font-size: 13px; color: #5f5e5a; }
+  .input-row input[type="text"] {
+    padding: 6px 10px; border-radius: 6px; border: 1px solid #d3d1c7;
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;
+    background: #fff; color: #2c2c2a; width: 180px;
+  }
+  .input-row input[type="number"] {
+    padding: 6px 8px; border-radius: 6px; border: 1px solid #d3d1c7;
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;
+    background: #fff; color: #2c2c2a; width: 60px; text-align: center;
+  }
+
   .log-section { margin-top: 20px; }
   .log-label { font-size: 12px; font-weight: 600; color: #888780; margin-bottom: 6px; letter-spacing: 0.5px; }
   .log {
     background: #2c2c2a; color: #d3d1c7; border-radius: 8px; padding: 12px 16px;
     font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px;
-    height: 110px; overflow-y: auto; line-height: 1.7;
+    height: 130px; overflow-y: auto; line-height: 1.7;
   }
   .log .wr { color: #5DCAA5; }
   .log .rd { color: #AFA9EC; }
   .log .info { color: #888780; }
   .log .err { color: #F09595; }
+  .log .partial { color: #EF9F27; }
 
-  /* Notes */
   .notes {
     margin-top: 24px; padding: 16px 20px; border-radius: 10px;
     background: #fff; border: 1px solid #d3d1c7; font-size: 13px;
     color: #5f5e5a; line-height: 1.7;
   }
   .notes strong { color: #2c2c2a; font-weight: 600; }
+  .notes code {
+    background: #f1efe8; padding: 1px 5px; border-radius: 3px;
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px;
+  }
 
   .pipe-call {
     text-align: center; margin-top: 14px;
@@ -161,7 +178,7 @@
 <body>
 <div class="container">
   <h1>Linux pipe</h1>
-  <p class="subtitle">A kernel buffer connecting two processes — click the buttons to see data flow</p>
+  <p class="subtitle">A kernel buffer connecting two processes — each syscall transfers multiple bytes</p>
 
   <div class="diagram">
     <!-- User Space -->
@@ -195,9 +212,9 @@
     <div class="region kernel-region">
       <span class="region-label">KERNEL SPACE</span>
       <div class="pipe-section">
-        <div class="pipe-label">Pipe buffer (FIFO queue · default 64 KB)</div>
+        <div class="pipe-label">Pipe buffer (FIFO queue · real capacity 64 KB)</div>
         <div class="buffer-track" id="buffer-track"></div>
-        <div class="flow-hint"><span>← write end&ensp;&ensp;·&ensp;&ensp;data flows →&ensp;&ensp;·&ensp;&ensp;read end →</span></div>
+        <div class="flow-hint"><span>write end →&ensp;data flows left to right&ensp;→ read end</span></div>
 
         <div class="fd-row">
           <div class="fd-badge write">
@@ -209,18 +226,25 @@
             <div class="fd-label">Read end</div>
           </div>
         </div>
-
         <div class="pipe-call">int fd[2]; &nbsp;pipe(fd);</div>
       </div>
     </div>
   </div>
 
-  <!-- Controls -->
+  <!-- Input controls -->
+  <div class="input-row">
+    <label>Write string:</label>
+    <input type="text" id="write-input" value="Hello!\n">
+    <label>read() n bytes:</label>
+    <input type="number" id="read-size" value="4" min="1" max="16">
+  </div>
+
+  <!-- Action controls -->
   <div class="controls">
     <button class="btn write-btn" id="write-btn" onclick="writeData()">write()</button>
     <button class="btn read-btn" id="read-btn" onclick="readData()">read()</button>
     <button class="btn reset-btn" onclick="resetPipe()">Reset</button>
-    <span class="status" id="status">Buffer: 0 / 8 slots</span>
+    <span class="status" id="status">Buffer: 0 / 16 bytes</span>
   </div>
 
   <!-- Terminal log -->
@@ -231,92 +255,129 @@
 
   <!-- Notes -->
   <div class="notes">
-    <strong>Key concepts:</strong>
-    A pipe is a unidirectional byte stream managed by the kernel.
-    <code>pipe()</code> returns two file descriptors — <code>fd[0]</code> for reading and <code>fd[1]</code> for writing.
-    Data is stored in a kernel buffer (default 64 KB on Linux) and follows FIFO order.
+    <strong>Multi-byte I/O:</strong>
+    Each <code>write()</code> call pushes an entire string into the buffer in one syscall — not byte by byte.
+    Each <code>read(fd, buf, n)</code> pulls up to <code>n</code> bytes in one syscall, returning however many are currently available.
+    <br><br>
+    <strong>Partial writes:</strong>
+    If the buffer doesn't have enough room for the full string, <code>write()</code> writes as many bytes as it can and returns that count. The program must loop to send the rest. Try it — type a long string when the buffer is nearly full.
     <br><br>
     <strong>Blocking behavior:</strong>
-    If the buffer is <strong>full</strong>, <code>write()</code> blocks the writer until space is available.
-    If the buffer is <strong>empty</strong>, <code>read()</code> blocks the reader until data arrives.
-    When all writers close <code>fd[1]</code>, the reader gets EOF.
-    When all readers close <code>fd[0]</code>, the writer receives <code>SIGPIPE</code>.
+    Buffer <strong>full</strong> → <code>write()</code> blocks until space is available.
+    Buffer <strong>empty</strong> → <code>read()</code> blocks until data arrives.
+    All writers close <code>fd[1]</code> → reader gets EOF (return 0).
+    All readers close <code>fd[0]</code> → writer receives <code>SIGPIPE</code>.
   </div>
 </div>
 
 <script>
-const CAPACITY = 8;
-const DATA_STREAM = ['H','e','l','l','o','!','\\n','W','o','r','l','d','\\n'];
-let buffer = [];
-let dataIdx = 0;
+var CAPACITY = 16;
+var buffer = [];
 
-function buildSlots() {
-  const track = document.getElementById('buffer-track');
-  track.innerHTML = '';
-  for (let i = 0; i < CAPACITY; i++) {
-    const slot = document.createElement('div');
-    slot.className = 'slot';
-    slot.id = 'slot-' + i;
-    track.appendChild(slot);
+function escapeToChars(str) {
+  var chars = [];
+  for (var i = 0; i < str.length; i++) {
+    if (str[i] === '\\' && i + 1 < str.length) {
+      var next = str[i + 1];
+      if (next === 'n') { chars.push('\\n'); i++; continue; }
+      if (next === 't') { chars.push('\\t'); i++; continue; }
+      if (next === '\\') { chars.push('\\\\'); i++; continue; }
+    }
+    chars.push(str[i]);
   }
+  return chars;
 }
 
-function updateUI() {
-  for (let i = 0; i < CAPACITY; i++) {
-    const slot = document.getElementById('slot-' + i);
+function renderBuffer() {
+  var track = document.getElementById('buffer-track');
+  track.innerHTML = '';
+  for (var i = 0; i < CAPACITY; i++) {
+    var slot = document.createElement('div');
     if (i < buffer.length) {
-      slot.textContent = buffer[i];
       slot.className = 'slot filled';
+      slot.textContent = buffer[i];
     } else {
-      slot.textContent = '';
       slot.className = 'slot';
     }
+    track.appendChild(slot);
   }
   document.getElementById('write-btn').disabled = buffer.length >= CAPACITY;
   document.getElementById('read-btn').disabled = buffer.length === 0;
   document.getElementById('status').textContent =
-    'Buffer: ' + buffer.length + ' / ' + CAPACITY + ' slots';
+    'Buffer: ' + buffer.length + ' / ' + CAPACITY + ' bytes';
 }
 
-function log(msg, cls) {
-  const el = document.getElementById('log');
+function animateNewSlots(startIdx, count) {
+  var track = document.getElementById('buffer-track');
+  var slots = track.children;
+  for (var i = startIdx; i < startIdx + count && i < slots.length; i++) {
+    slots[i].classList.add('fresh');
+  }
+}
+
+function logMsg(msg, cls) {
+  var el = document.getElementById('log');
   el.innerHTML += '\n<span class="' + cls + '">' + msg + '</span>';
   el.scrollTop = el.scrollHeight;
 }
 
+function displayStr(chars) {
+  return '"' + chars.join('') + '"';
+}
+
 function writeData() {
-  if (buffer.length >= CAPACITY) {
-    log('$ write(fd[1]) → BLOCKED (buffer full, writer sleeps)', 'err');
+  var raw = document.getElementById('write-input').value;
+  if (!raw) return;
+  var chars = escapeToChars(raw);
+  if (chars.length === 0) return;
+
+  var space = CAPACITY - buffer.length;
+
+  if (space === 0) {
+    logMsg('$ write(fd[1], ' + displayStr(chars) + ', ' + chars.length + ')  →  BLOCKED (buffer full)', 'err');
     return;
   }
-  const ch = DATA_STREAM[dataIdx % DATA_STREAM.length];
-  const display = ch === '\\n' ? '\\n' : ch;
-  buffer.push(display);
-  dataIdx++;
-  log('$ write(fd[1], "' + display + '", 1)  →  1 byte written  [' + buffer.length + '/' + CAPACITY + ']', 'wr');
-  updateUI();
+
+  var toWrite = chars.slice(0, space);
+  var written = toWrite.length;
+  var startIdx = buffer.length;
+  buffer = buffer.concat(toWrite);
+
+  if (written < chars.length) {
+    logMsg('$ write(fd[1], ' + displayStr(chars) + ', ' + chars.length + ')  →  ' + written + ' (partial write! ' + (chars.length - written) + ' bytes couldn\'t fit)', 'partial');
+  } else {
+    logMsg('$ write(fd[1], ' + displayStr(chars) + ', ' + chars.length + ')  →  ' + written + '  (' + written + ' bytes, 1 syscall)', 'wr');
+  }
+
+  renderBuffer();
+  animateNewSlots(startIdx, written);
 }
 
 function readData() {
+  var n = parseInt(document.getElementById('read-size').value) || 4;
   if (buffer.length === 0) {
-    log('$ read(fd[0]) → BLOCKED (buffer empty, reader sleeps)', 'err');
+    logMsg('$ read(fd[0], buf, ' + n + ')  →  BLOCKED (buffer empty)', 'err');
     return;
   }
-  const ch = buffer.shift();
-  log('$ read(fd[0], buf, 1)   →  got "' + ch + '"  [' + buffer.length + '/' + CAPACITY + ']', 'rd');
-  updateUI();
+
+  var toRead = Math.min(n, buffer.length);
+  var readChars = buffer.splice(0, toRead);
+
+  logMsg('$ read(fd[0], buf, ' + n + ')  →  ' + toRead + '  buf=' + displayStr(readChars) + '  (1 syscall)', 'rd');
+
+  renderBuffer();
 }
 
 function resetPipe() {
   buffer = [];
-  dataIdx = 0;
+  document.getElementById('write-input').value = 'Hello!\\n';
+  document.getElementById('read-size').value = '4';
   document.getElementById('log').innerHTML =
     '<span class="info">$ pipe(fd)  →  fd[0]=3, fd[1]=4  (pipe created)</span>';
-  updateUI();
+  renderBuffer();
 }
 
-buildSlots();
-updateUI();
+renderBuffer();
 </script>
 </body>
 </html>
